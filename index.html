@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.4.9 (Hybrid)</title>
+  <title>HomeLedger v1.4.9</title>
+  <link rel="manifest" href="/manifest.json">
   <style>
     /* ------------------------------------------------------------------- */
     /* 1. CSS Variables and Theme Setup */
@@ -37,7 +38,7 @@
       --accent:#2563eb; --success:#059669; --warning:#b45309; --danger:#b91c1c;
       
       --text-color: var(--muted);
-      --input-bg: var(--panel); 
+      --input-bg: var(--ffffff); 
       --input-border: var(--glass-border);
       --focus-outline-color: var(--accent); 
       --active-filter-bg: var(--accent);
@@ -194,9 +195,7 @@
         font-size: 14px;
     }
 
-    /* Added Status Element to Footer */
-    footer{text-align:center;font-size:12px;opacity:0.9;margin-top:10px; color: var(--text-color);}
-    .gs-status { margin-left: 5px; font-weight: 700; }
+    footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
     
     /* ------------------------------------------------------------------- */
     /* 5. Modals and Delete Confirmation (UX FIX) */
@@ -334,16 +333,17 @@
   <div class="wrap" id="app">
     <div class="topbar">
       <div class="brand">HomeLedger</div>
+      <div id="sync-status" style="font-size:12px; font-weight:700;">Status: Loading...</div>
       <div class="controls">
         <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
         <details class="menu">
           <summary>⋮</summary>
           <div class="dropdown">
             <button id="btn-log">📜 View Activity Log</button>
-            <button id="btn-backup">Backup (Local)</button>
-            <button id="btn-restore">Restore (Local)</button>
-            <button id="btn-export">Export CSV (Local)</button>
-            <button id="btn-reset">⚠️ Delete All Local Data</button>
+            <button id="btn-reset">⚠️ Delete All Data</button>
+            <button id="btn-backup">Backup</button>
+            <button id="btn-restore">Restore</button>
+            <button id="btn-export">Export CSV</button>
           </div>
         </details>
       </div>
@@ -410,10 +410,7 @@
       </div>
     </div>
 
-    <footer>
-        HomeLedger v1.4.9 (Hybrid) | Status: 
-        <span id="gs-status" class="gs-status" style="color:var(--warning);">Loading...</span>
-    </footer>
+    <footer>HomeLedger v1.4.9</footer>
   </div>
 
   <div class="overlay" id="log-overlay" aria-hidden="true">
@@ -462,12 +459,12 @@
     <div class="modal" role="document" aria-modal="true">
       <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
       <div class="delete-modal-content">
-        <p>⚠️ **Warning:** The Delete button is disabled in this Sheets version. To delete this record, you must manually find and delete Row ID <strong id="delete-row-id"></strong> in your Google Sheet.</p>
+        <p>Are you sure you want to permanently delete the following record?</p>
         <div class="record-details" id="delete-record-details"></div>
       </div>
       <div class="actions-row">
-        <button class="btn-cancel" id="delete-cancel">Close</button>
-        <button class="btn-save btn-delete-confirm" id="delete-confirm-btn" data-id="" disabled>Delete (Disabled)</button>
+        <button class="btn-cancel" id="delete-cancel">Cancel</button>
+        <button class="btn-save btn-delete-confirm" id="delete-confirm-btn" data-id="">Delete</button>
       </div>
     </div>
   </div>
@@ -491,12 +488,16 @@
 
   <script>
     (function(){
-    // -------------------------------------------------------------------
-// 0. GOOGLE SHEETS API SETUP (NEW)
-// -------------------------------------------------------------------
-const API_URL = 'https://script.google.com/macros/s/AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS/exec';
-const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS';
+      // -------------------------------------------------------------------
+      // 0. GOOGLE SHEETS API SETUP (NEW)
+      // -------------------------------------------------------------------
+      // YOUR DEPLOYMENT ID AND URL
+      const API_URL = 'https://script.google.com/macros/s/AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS/exec';
+      const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS';
       
+      let IS_ONLINE = navigator.onLine; // Initial online status
+      let SYNC_STATUS = 'Disconnected';
+      let IS_SYNCING = false;
       // -------------------------------------------------------------------
       // 1. DOM References and Constants
       // -------------------------------------------------------------------
@@ -505,7 +506,6 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       const deleteCancelBtn = document.getElementById('delete-cancel');
       const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
       const deleteDetailsDiv = document.getElementById('delete-record-details');
-      const deleteRowIdEl = document.getElementById('delete-row-id');
       const resetOverlay = document.getElementById('reset-overlay'); 
       const resetCancelBtn = document.getElementById('reset-cancel'); 
       const resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
@@ -531,8 +531,6 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       const btnExport = document.getElementById('btn-export');
       const themeToggle = document.getElementById('theme-toggle'); 
       const restoreFileInput = document.getElementById('restore-file');
-      const gsStatusEl = document.getElementById('gs-status'); // NEW
-
       
       const quickFilterButtons = {
           today: document.getElementById('quick-today'),
@@ -542,24 +540,15 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       };
 
       const STORAGE_KEY = 'homeledger_v1_data_v1';
-      const PENDING_KEY = 'homeledger_pending_v1'; // Key for offline records
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
       // VERSION: Update the log entry version to 1.4.9
-      const VERSION_TAG = 'HomeLedger v1.4.9 (Hybrid)'; 
-      
-      // Store Structure: records (synced or fallback), logs, pending (offline records)
-      let store = { 
-          records: [], 
-          logs: [], 
-          pending: [] // NEW: For records saved offline
-      }; 
+      const VERSION_TAG = 'HomeLedger v1.4.9'; 
+      let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
-      let isOnline = false; // NEW: Network status flag
-
 
       // -------------------------------------------------------------------
-      // 2. Helper Functions (Unchanged)
+      // 2. Helper Functions
       // -------------------------------------------------------------------
       function pad(n){ return String(n).padStart(2,'0'); }
       function nowTsForLog(){
@@ -591,50 +580,134 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
           return { from: isoFormat(fromDate), to: isoFormat(toDate) };
       }
       
+      // *** FIX: seedSampleData function now returns an empty array ***
       function seedSampleData() {
-          return []; 
+          return []; // Returns an empty array to ensure no data is ever seeded automatically
       }
-      
       // -------------------------------------------------------------------
-      // 3. Persistence & Theme (MODIFIED for Hybrid)
+      // 3. GOOGLE SHEETS API COMMUNICATION (NEW)
       // -------------------------------------------------------------------
-      
+      function updateSyncStatus(status, color = 'var(--text-color)', sync = false) {
+          SYNC_STATUS = status;
+          const statusDiv = document.getElementById('sync-status');
+          if (statusDiv) {
+              statusDiv.textContent = 'Status: ' + status;
+              statusDiv.style.color = color;
+              IS_SYNCING = sync;
+              statusDiv.style.fontWeight = sync ? '800' : '700';
+          }
+      }
+
+      async function fetchDataFromSheets() {
+          if (!IS_ONLINE) {
+              updateSyncStatus('Offline', 'var(--warning)');
+              return { records: [] };
+          }
+          updateSyncStatus('Fetching...', 'var(--accent)', true);
+          addLog(`[${nowTsForLog()}] Attempting to fetch data from Google Sheets...`);
+          
+          try {
+              const response = await fetch(API_URL + '?action=getRecords');
+              const data = await response.json();
+              
+              if (data.status === 'success') {
+                  updateSyncStatus('Synced', 'var(--success)');
+                  addLog(`[${nowTsForLog()}] Successfully fetched ${data.records.length} records from Sheets.`);
+                  return data;
+              } else {
+                  // This happens if the Sheets API call fails on the server side (e.g., no records, or error in script)
+                  throw new Error(data.message || 'Sheets API returned an error.');
+              }
+          } catch (error) {
+              const msg = `Could not connect to Google Sheets. Check API URL or Internet connection.`;
+              updateSyncStatus('Error: Check Console', 'var(--danger)');
+              console.error('Fetch from Sheets Error:', error);
+              alert('⚠️ Network Error: ' + msg);
+              addLog(`[${nowTsForLog()}] ERROR: Sheets fetch failed. ${error.message || msg}`);
+              return { records: [] };
+          }
+      }
+
+      async function sendToSheets(record, action) {
+          if (!IS_ONLINE) {
+              updateSyncStatus('Offline Access: Failed to reach API.', 'var(--warning)');
+              alert(`⚠️ Error saving data to Google Sheets: Offline access: Failed to reach Google Sheets API.`);
+              return { status: 'error', message: 'Offline' };
+          }
+          
+          updateSyncStatus('Saving...', 'var(--accent)', true);
+          
+          const payload = { 
+              action: action, 
+              record: record 
+          };
+          
+          try {
+              const response = await fetch(API_URL, {
+                  method: 'POST',
+                  body: JSON.stringify(payload),
+              });
+
+              // The GAS script always returns JSON, even on error.
+              const data = await response.json();
+
+              if (data.status === 'success') {
+                  updateSyncStatus('Synced', 'var(--success)');
+                  addLog(`[${nowTsForLog()}] Sheets ${action} success: ${data.message || 'Record saved.'}`);
+                  return data;
+              } else {
+                  // Sheets script returned an error status
+                  throw new Error(data.message || `Sheets API ${action} failed.`);
+              }
+          } catch (error) {
+              updateSyncStatus('Error: Save Failed', 'var(--danger)');
+              console.error('Sheets Send Error:', error);
+              alert(`⚠️ Error saving data to Google Sheets: ${error.message || 'Check console for details.'}`);
+              addLog(`[${nowTsForLog()}] ERROR: Sheets ${action} failed. ${error.message || 'Network issue or API error.'}`);
+              return { status: 'error', message: error.message || 'Network issue or API error' };
+          }
+      }
+
+      function deleteSheetRecord(id) {
+          return sendToSheets({ id }, 'deleteRecord');
+      }
+
+      function updateSheetRecord(record, mode) {
+          if (mode === 'add') {
+              return sendToSheets(record, 'addRecord');
+          } else if (mode === 'edit') {
+              return sendToSheets(record, 'editRecord');
+          }
+      }
+
+      // -------------------------------------------------------------------
+      // 4. Persistence & Theme
+      // -------------------------------------------------------------------
       function saveToStorage(){
         try{ 
-            // Save records (for cache), logs, and pending queue
-            const dataToSave = { 
-                records: store.records, 
-                logs: store.logs,
-                pending: store.pending // Save pending records
-            };
-            
-            if (store.records.length > 0 || store.logs.length > 0 || store.pending.length > 0) {
-                 localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            // Only save the main storage key if there are records or logs.
+            if (store.records.length > 0 || store.logs.length > 0) {
+                 localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
             } else {
+                 // **FIX:** Ensure the STORAGE_KEY is explicitly removed if records are empty
                  localStorage.removeItem(STORAGE_KEY);
             }
             // Save settings keys regardless
             localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
-        }catch(e){
-            console.error('Error saving to local storage:', e);
-        }
+        }catch(e){}
       }
-      
       function loadFromStorage(){
         try{
           const raw = localStorage.getItem(STORAGE_KEY);
           if(raw){ 
               const parsed = JSON.parse(raw); 
-              if(parsed.records) store.records = parsed.records; // Load cached records
+              if(parsed.records) store.records = parsed.records; 
               if(parsed.logs) store.logs = parsed.logs; 
-              if(parsed.pending) store.pending = parsed.pending; // Load pending queue
           }
           const rawSort = localStorage.getItem(SORT_KEY);
           if(rawSort) currentSort = JSON.parse(rawSort);
 
-        }catch(e){
-            console.error('Error loading from local storage:', e);
-        }
+        }catch(e){}
       }
       
       function applyTheme(theme){
@@ -659,277 +732,45 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       }
 
       // -------------------------------------------------------------------
-      // 3.5. GOOGLE SHEETS DATA HANDLERS (HYBRID CORE LOGIC)
-      // -------------------------------------------------------------------
-      
-      function updateStatus(statusText, colorVar) {
-          gsStatusEl.textContent = statusText;
-          gsStatusEl.style.color = colorVar;
-      }
-      
-      // 3.5.1 Fetch Data (Network First/Cache Fallback)
-      async function loadDataFromSheets() {
-          updateStatus('Syncing...', 'var(--warning)');
-          isOnline = false; // Assume offline until proven otherwise
-          
-          try {
-              const response = await fetch(API_URL, { method: 'GET', cache: 'no-store' }); // Use no-store to ensure fresh data
-              
-              if (!response.ok) {
-                   // This is for API errors, not network errors (which throw catch)
-                   throw new Error(`API returned HTTP Error: ${response.status} ${response.statusText}`);
-              }
-              const data = await response.json();
-              
-              if (data.records) {
-                  // SUCCESS: Online and data fetched
-                  isOnline = true;
-                  
-                  // 1. Process records for UI (API uses +/-)
-                  data.records.forEach(r => r.sign = r.sign === '+' ? 'positive' : 'negative'); 
-                  store.records = data.records;
-                  
-                  // 2. Clear any local pending records now that we have the fresh state
-                  if (store.pending.length > 0) {
-                       addLog(`[${nowTsForLog()}] Cleared ${store.pending.length} pending records after successful sync.`);
-                       store.pending = []; 
-                  }
-                  
-                  // 3. Try to upload any remaining pending records (in case the previous sync failed)
-                  await syncPendingRecords();
-                  
-                  // 4. Update UI
-                  recalcGrandTotal(); 
-                  applyFilter();
-                  updateStatus('Synced', 'var(--success)');
-                  addLog(`[${nowTsForLog()}] Data loaded from Sheets successfully (${store.records.length} records).`);
-                  
-              } else {
-                  // API returned 200 but no valid data
-                  throw new Error('Valid response received, but records are missing.');
-              }
-
-          } catch (error) {
-              // ERROR: Network or API failure. Fall back to local cache.
-              if (store.records.length > 0) {
-                  updateStatus('Offline (Cache)', 'var(--danger)');
-                  recalcGrandTotal(); 
-                  applyFilter();
-                  addLog(`[${nowTsForLog()}] ERROR: API failed. Falling back to local cache (${store.records.length} records).`);
-              } else {
-                  updateStatus('Offline (Empty)', 'var(--danger)');
-                  addLog(`[${nowTsForLog()}] ERROR: API failed. No local cache available.`);
-                  store.records = []; // Ensure it's empty if no cache
-                  recalcGrandTotal(); 
-                  applyFilter();
-              }
-              console.error('Load Error:', error);
-          }
-          saveToStorage(); // Always save the current state (cache/logs/pending)
-      }
-      
-      // 3.5.2 Sync Pending Records (Uploads offline entries)
-      async function syncPendingRecords() {
-          if (!isOnline || store.pending.length === 0) return;
-
-          updateStatus(`Syncing ${store.pending.length} pending...`, 'var(--warning)');
-          
-          let successfullyUploaded = [];
-          
-          // Use a loop to send each pending record one by one
-          for (const rec of store.pending) {
-              try {
-                  const payload = { 
-                      action: 'add', 
-                      record: {
-                          id: rec.id, // Original ID is passed, but Sheets will assign its own Row ID
-                          date: rec.date,
-                          account: rec.account,
-                          desc: rec.desc,
-                          amount: rec.amount,
-                          sign: getSignForAccount(rec.account) // Use API-compatible sign
-                      }
-                  };
-                  const response = await fetch(API_URL, {
-                      method: 'POST',
-                      body: JSON.stringify(payload),
-                      headers: { 'Content-Type': 'text/plain' }
-                  });
-                  
-                  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                  const result = await response.json();
-                  
-                  if (result.status === 'success') {
-                      successfullyUploaded.push(rec);
-                      addLog(`[${nowTsForLog()}] SYNC: Uploaded pending record: ${rec.desc}`);
-                  } else {
-                      addLog(`[${nowTsForLog()}] SYNC ERROR: Failed to upload ${rec.desc}. Retrying next time.`);
-                  }
-
-              } catch (error) {
-                  // A network error occurred during sync, stop and try again later
-                  addLog(`[${nowTsForLog()}] SYNC ERROR: Network interrupted. Stopping sync.`);
-                  break; 
-              }
-          }
-
-          // Remove successfully uploaded records from the pending queue
-          store.pending = store.pending.filter(rec => !successfullyUploaded.includes(rec));
-          
-          if (store.pending.length === 0) {
-              updateStatus('Synced', 'var(--success)');
-          } else {
-              updateStatus(`Synced (${store.pending.length} remaining)`, 'var(--danger)');
-          }
-
-          // Reload all data from sheets to ensure local state is consistent with the sheet
-          if (successfullyUploaded.length > 0) {
-              await loadDataFromSheets(); 
-          }
-          saveToStorage();
-      }
-
-      // 3.5.3 Save Record (Online/Offline Logic)
-      async function saveRecord(recordData) {
-          const mode = overlay.dataset.mode;
-          
-          if (isOnline) {
-              // 1. ONLINE: Attempt to save directly to Sheets
-              updateStatus('Saving to Sheets...', 'var(--warning)');
-              try {
-                  const payload = { 
-                      action: (mode === 'add' ? 'add' : 'update'), // Sheets API must handle update logic
-                      record: {
-                          id: recordData.id,
-                          date: recordData.date,
-                          account: recordData.account,
-                          desc: recordData.desc,
-                          amount: recordData.amount,
-                          sign: getSignForAccount(recordData.account) // API sign (+/-)
-                      }
-                  };
-                  
-                  const response = await fetch(API_URL, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'text/plain' },
-                      body: JSON.stringify(payload)
-                  });
-                  
-                  const data = await response.json();
-                  if (data.status === 'success') {
-                      addLog(`[${nowTsForLog()}] Record saved to Google Sheets (ID: ${recordData.id}).`);
-                      await loadDataFromSheets(); // Reload data to get Sheet Row ID and fresh state
-                      return true;
-                  } else {
-                      throw new Error(data.message || 'Unknown API Error');
-                  }
-                  
-              } catch (error) {
-                  // Fall through to offline mode if Sheets save fails
-                  addLog(`[${nowTsForLog()}] WARNING: Sheets save failed (${error.message}). Saving to local pending queue.`);
-                  updateStatus('Saving Failed! (Offline Cache)', 'var(--danger)');
-                  
-                  // Now save locally as pending
-                  recordData.isPending = true;
-                  store.pending.unshift(recordData);
-                  store.records.unshift(recordData); // Show immediately in the list
-                  saveToStorage();
-                  
-                  recalcGrandTotal(); applyFilter();
-                  return true; // Return true so modal closes
-              }
-          } else {
-              // 2. OFFLINE: Save only to Local Storage Pending Queue
-              updateStatus('Offline Save (Pending)', 'var(--danger)');
-              recordData.isPending = true;
-              store.pending.unshift(recordData);
-              store.records.unshift(recordData); // Show immediately in the list
-              saveToStorage();
-              
-              recalcGrandTotal(); 
-              applyFilter();
-              addLog(`[${nowTsForLog()}] OFFLINE: Saved to pending queue. Sync will occur when online.`);
-              return true; // Return true so modal closes
-          }
-      }
-
-
-      // -------------------------------------------------------------------
-      // 4. Rendering, Logging, and Summary (MODIFIED to show Pending)
+      // 5. Rendering, Logging, and Summary
       // -------------------------------------------------------------------
       function renderRecords(list){
-        // Remove existing records and empty state
-        Array.from(recordsSection.querySelectorAll('.record-row')).forEach(n=>n.remove());
-
+        Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
         const rows = (list && Array.isArray(list)) ? list : [];
         
-        // Find or create the list container
-        let recordsList = recordsSection.querySelector('.records-list-container');
-        if (!recordsList) {
-            recordsList = document.createElement('div');
-            recordsList.className = 'records-list-container';
-            // Insert it after the header (which is the first child)
-            recordsSection.appendChild(recordsList);
-        }
-        recordsList.innerHTML = '';
-
-
         if (rows.length === 0) {
-            // ... (Empty state code remains the same)
             const emptyDiv = document.createElement('div');
             emptyDiv.className = 'empty-state';
-            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value || filterTo.value 
+            // Custom message if filters are active, otherwise the standard startup message
+            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
                                     ? "No records found matching your current filters."
                                     : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
-            recordsList.appendChild(emptyDiv);
+            recordsSection.appendChild(emptyDiv);
             recalcFilteredSummary(rows);
             return;
         }
 
         rows.forEach(rec=>{
-          const isPending = rec.isPending || false; // Check for the new flag
-          const row = document.createElement('div'); 
-          row.className='record-row'; 
-          row.dataset.id=rec.id;
-          if (isPending) {
-            row.style.opacity = '0.7'; 
-            row.style.borderLeft = '4px solid var(--warning)';
-            row.title = 'Pending Sync (Offline Record)';
-          }
-
+          const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.id;
           row.innerHTML = `
             <div>${rec.date}</div>
             <div>${rec.account}</div>
-            <div>${isPending ? '⏳ ' : ''}${rec.desc}</div> 
+            <div>${rec.desc}</div>
             <div>${formatAmount(rec.amount,rec.sign)}</div>
             <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
           `;
           row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.id));
           row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.id));
-          recordsList.appendChild(row);
+          recordsSection.appendChild(row);
         });
         recalcFilteredSummary(rows);
       }
-      
+
       function renderLogs(){
         const logModalList = document.getElementById('activity-log-modal');
         logModalList.innerHTML = '';
-        
-        // Combine regular logs and pending list into one for display
-        const allLogs = [
-            ...store.pending.map(r => `⚠️ PENDING: ${r.date} - ${r.desc} (${formatAmount(r.amount, r.sign)})`),
-            ...store.logs
-        ];
-
-        allLogs.forEach(entry=>{
-          const div = document.createElement('div'); 
-          div.className='log-item'; 
-          div.textContent = entry;
-          if (entry.startsWith('⚠️ PENDING')) {
-             div.style.backgroundColor = 'var(--warning)';
-             div.style.color = 'var(--bg)';
-             div.style.fontWeight = '700';
-          }
+        store.logs.forEach(entry=>{
+          const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
           logModalList.appendChild(div);
         });
       }
@@ -943,7 +784,6 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
 
       function recalcGrandTotal(){
           let income = 0, loan = 0, expense = 0;
-          // Calculate balance from the combined records list (synced + pending)
           store.records.forEach(r=>{
               if(r.account === 'Income') income += Number(r.amount || 0);
               else if(r.account === 'Loan') loan += Number(r.amount || 0);
@@ -967,7 +807,7 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       }
       
       // -------------------------------------------------------------------
-      // 5. Filtering and Sorting Logic (Unchanged)
+      // 6. Filtering and Sorting Logic
       // -------------------------------------------------------------------
       function getFilteredRecords(){
         const q = (filterSearch.value || '').trim().toLowerCase();
@@ -993,7 +833,6 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
         renderRecords(filtered);
       }
       
-      // ... (sortRecords, handleSortClick, setQuickFilter remain the same)
       function sortRecords(list) {
           list.sort((a, b) => {
               const key = currentSort.key;
@@ -1001,10 +840,10 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
               let valA, valB;
 
               if (key === 'amount') {
-                  valA = Number(a.amount);
-                  valB = Number(b.amount);
-                  if (valA !== valB) return (valA - valB) * order;
-                  return (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) * (currentSort.order === 'asc' ? 1 : -1); 
+                  // Amount sorting must handle both positive/negative (Income/Expense/Loan)
+                  valA = a.sign === 'positive' ? Number(a.amount) : -Number(a.amount);
+                  valB = b.sign === 'positive' ? Number(b.amount) : -Number(b.amount);
+                  return (valA - valB) * order;
               } else if (key === 'date') {
                   valA = a.date;
                   valB = b.date;
@@ -1077,9 +916,8 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       }
       
       // -------------------------------------------------------------------
-      // 6. CRUD Modal Actions (MODIFIED)
+      // 7. CRUD Modal Actions (MODIFIED FOR SHEETS API)
       // -------------------------------------------------------------------
-      // ... (openAdd, openEdit, closeModal, closeDeleteModal, closeResetModal, openDeleteConfirm, confirmDelete, openResetConfirm, confirmReset remain the same)
       function openAdd(kind){
         overlay.classList.add('show'); overlay.dataset.mode = 'add'; overlay.dataset.editId = '';
         title.textContent = `Add ${capitalize(kind)} Entry`;
@@ -1095,18 +933,12 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       function openEdit(id){
         const rec = store.records.find(r=>r.id === id);
         if(!rec) return;
-        
-        alert(`🚨 Warning: Edit mode is currently simplified. This action will submit a NEW record instead of updating the existing one in the Sheet (ID: ${rec.id}).`);
-        
-        overlay.classList.add('show'); 
-        overlay.dataset.mode = 'add'; 
-        overlay.dataset.editId = '';
-
-        title.textContent = `Edit Record (Submitting as New)`;
+        overlay.classList.add('show'); overlay.dataset.mode = 'edit'; overlay.dataset.editId = id;
+        title.textContent = `Edit ${rec.account} Entry`;
         accountSelect.value = rec.account; 
         accountSelect.disabled = true; 
-        saveBtn.className = 'btn-save ' + rec.account.toLowerCase();
-        saveBtn.textContent = 'Submit as New';
+        saveBtn.className = 'btn-save edit';
+        saveBtn.textContent = 'Update';
         descInput.value = rec.desc; amtInput.value = rec.amount; 
         dateInput.value = rec.date;
       }
@@ -1127,7 +959,6 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
           if (!rec) return;
           
           deleteConfirmBtn.dataset.id = id;
-          deleteRowIdEl.textContent = rec.id;
           deleteDetailsDiv.innerHTML = `
             <strong>Type:</strong> <span style="color: ${rec.account === 'Income' ? 'var(--success)' : rec.account === 'Loan' ? 'var(--warning)' : 'var(--danger)'};">${rec.account}</span><br>
             <strong>Date:</strong> ${rec.date}<br>
@@ -1137,9 +968,24 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
           deleteOverlay.classList.add('show');
       }
       
-      function confirmDelete(id) {
-          alert(`🚨 Deletion is not supported in this Sheets version. Please delete row ID ${id} manually in your Google Sheet.`);
-          addLog(`[${nowTsForLog()}] DELETION ATTEMPT: User attempted to delete record ID: ${id}`);
+      async function confirmDelete(id) { // MODIFIED TO BE ASYNC
+          const rec = store.records.find(r=>r.id === id);
+          if(!rec) return;
+          
+          // 1. Delete from Sheets first
+          const sheetResult = await deleteSheetRecord(id); 
+          
+          if (sheetResult.status !== 'success') {
+              // If deletion from Sheets failed, show error and stop.
+              return; 
+          }
+
+          // 2. Delete from local storage only if Sheets was successful
+          store.records = store.records.filter(r=>r.id !== id);
+          addLog(`[${nowTsForLog()}] Deleted ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
+          saveToStorage();
+          recalcGrandTotal(); 
+          applyFilter(); 
           closeDeleteModal();
       }
 
@@ -1148,18 +994,20 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       }
 
       function confirmReset() { 
-          // Clear all local keys (Records, Logs, Pending Queue, Theme, Sort)
+          // 1. Delete ALL keys related to the app from LocalStorage
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(SORT_KEY);
           localStorage.removeItem(THEME_KEY);
           
-          // Clear in-memory state and reset sort order
+          // 2. Clear in-memory state and reset sort order
           store.records = []; 
           store.logs = [];    
-          store.pending = []; 
           currentSort = { key: 'date', order: 'desc' }; 
           
-          // Force reload
+          // 3. Immediately save (which saves empty data now)
+          saveToStorage(); 
+
+          // 4. Force reload the app.
           window.location.reload(); 
       }
 
@@ -1175,40 +1023,77 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       }
 
       function getSignForAccount(account) {
-          if (account === 'Income') return '+';
-          if (account === 'Loan') return '+'; 
-          return '-';
+          if (account === 'Income' || account === 'Loan') {
+              return 'positive';
+          }
+          return 'negative';
       }
 
-      // MODIFIED saveHandler to use the new saveRecord function
-      async function saveHandler(e){
-        e.preventDefault();
+      async function saveHandler(){ // MODIFIED TO BE ASYNC
         if(!validInputs()) return;
-        
+        const mode = overlay.dataset.mode;
         const account = accountSelect.value; 
         const desc = descInput.value.trim();
         const amt = Number(amtInput.value);
         const date = dateInput.value;
-        const sign = (account === 'Income' || account === 'Loan') ? 'positive' : 'negative'; // UI Sign
+        const sign = getSignForAccount(account);
         
-        const recordData = {
-            date: date,
-            account: account,
-            desc: desc,
-            amount: amt,
-            sign: sign,
-            id: 'r' + Date.now() 
-        };
+        let rec;
+        let sheetResult = { status: 'error' };
 
-        const success = await saveRecord(recordData);
-        
-        if (success) {
-            closeModal();
+        if(mode === 'add'){
+          const id = 'r' + Date.now();
+          rec = { id, date, account, desc, amount: amt, sign };
+          
+          // 1. Send to Sheets first (asynchronously)
+          sheetResult = await updateSheetRecord(rec, 'add'); 
+          
+          if (sheetResult.status === 'success') {
+              store.records.unshift(rec); // 2. Add to local storage only if Sheets successful
+              addLog(`[${nowTsForLog()}] Added ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
+          } else {
+              // If Sheets failed, prevent closing the modal, show error and let user retry/fix connection
+              return;
+          }
+          
+        } else if(mode === 'edit'){
+          const id = overlay.dataset.editId;
+          rec = store.records.find(r=>r.id === id);
+          if(rec){
+            const before = `${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`;
+            
+            // Create an updated object for Sheets
+            const updatedRec = { id, date, account, desc, amount: amt, sign };
+
+            // 1. Send Update to Sheets (asynchronously)
+            sheetResult = await updateSheetRecord(updatedRec, 'edit'); 
+            
+            if (sheetResult.status === 'success') {
+                // 2. Update local store only if Sheets successful
+                rec.date = date; 
+                rec.desc = desc; 
+                rec.amount = amt; 
+                rec.sign = sign; 
+                addLog(`[${nowTsForLog()}] Edited ${rec.account} entry (${rec.id}): ${before} → ${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
+            } else {
+                // If Sheets failed, prevent closing the modal
+                return;
+            }
+          } else {
+              // Record not found in local store, proceed as if error
+              return;
+          }
         }
+        
+        // Close modal and refresh UI only on success
+        closeModal();
+        saveToStorage(); // Save to local storage after Sheets success
+        recalcGrandTotal(); 
+        applyFilter(); 
       }
 
       // -------------------------------------------------------------------
-      // 7. Event Wiring and Initialization (Unchanged)
+      // 8. Event Wiring and Initialization
       // -------------------------------------------------------------------
       
       filterFrom.value = isoToday();
@@ -1222,7 +1107,7 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeModal(); closeDeleteModal(); closeResetModal(); } });
       
       deleteCancelBtn.addEventListener('click', closeDeleteModal);
-      deleteConfirmBtn.addEventListener('click', (e) => confirmDelete(e.target.dataset.id)); 
+      deleteConfirmBtn.addEventListener('click', (e) => confirmDelete(e.target.dataset.id));
       deleteOverlay.addEventListener('click', e => { if(e.target === deleteOverlay) closeDeleteModal(); });
 
       btnReset.addEventListener('click', openResetConfirm); 
@@ -1256,11 +1141,11 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
 
 
       // -------------------------------------------------------------------
-      // 8. Backup/Restore/Export Functions (MODIFIED to include pending queue)
+      // 9. Backup/Restore/Export Functions
       // -------------------------------------------------------------------
       function backupData(){
         try{
-          const dataStr = JSON.stringify(store, null, 2); // Includes records, logs, and pending
+          const dataStr = JSON.stringify(store, null, 2);
           const blob = new Blob([dataStr], {type: 'application/json'});
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -1283,16 +1168,13 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
           try{
             const parsed = JSON.parse(ev.target.result);
             if(parsed && parsed.records){
-                store.records = parsed.records || [];
-                store.logs = parsed.logs || [];
-                store.pending = parsed.pending || []; // Restore pending records too
-                saveToStorage();
-                
-                // Force sync and UI update after restore
-                loadDataFromSheets(); 
-                
-                addLog(`[${nowTsForLog()}] Restored data from file: ${file.name}. Syncing with Sheets.`);
-                alert('Restore completed. Data is now syncing with Google Sheets.');
+              store.records = parsed.records;
+              store.logs = parsed.logs || store.logs;
+              saveToStorage();
+              recalcGrandTotal(); 
+              applyFilter(); 
+              addLog(`[${nowTsForLog()}] Restored data from file: ${file.name}`);
+              alert('Restore completed. Filter has been reset to "Today".');
             } else {
               alert('Invalid backup file.');
             }
@@ -1304,8 +1186,8 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
       });
       function exportCSV(){
         try{
-          const rows = [['date','account','description','amount','sign','id','is_pending']];
-          getFilteredRecords().forEach(r => rows.push([r.date, r.account, r.desc, r.amount, r.sign, r.id, r.isPending ? 'TRUE' : 'FALSE']));
+          const rows = [['date','account','description','amount','sign','id']];
+          getFilteredRecords().forEach(r => rows.push([r.date, r.account, r.desc, r.amount, r.sign, r.id]));
           const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
           const blob = new Blob([csv], {type: 'text/csv'});
           const url = URL.createObjectURL(blob);
@@ -1320,19 +1202,58 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
 
 
       // -------------------------------------------------------------------
-      // 9. Initial Load
+      // 10. Initial Load & Service Worker Registration
       // -------------------------------------------------------------------
       
-      async function initializeApp() {
-
-          // 1. Load Local State (Cache, Logs, Pending)
-          loadFromStorage();
-          
-          if(store.logs.length === 0){
-            store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
+      function checkNetworkStatus() {
+          IS_ONLINE = navigator.onLine;
+          if (!IS_ONLINE) {
+              updateSyncStatus('Offline', 'var(--warning)');
+              addLog(`[${nowTsForLog()}] Device went offline.`);
+          } else {
+              // If we came back online, attempt to sync/fetch if we were disconnected
+              if (SYNC_STATUS === 'Offline' || SYNC_STATUS.startsWith('Error')) {
+                  loadAllData(); // Re-fetch on reconnect
+              } else if(SYNC_STATUS === 'Disconnected') {
+                  loadAllData(); // Initial load if not done yet
+              }
           }
+      }
+      window.addEventListener('online', checkNetworkStatus);
+      window.addEventListener('offline', checkNetworkStatus);
 
-          // 2. Load Theme and Sort Settings
+
+      async function loadAllData() {
+          // 1. Check network
+          checkNetworkStatus();
+          
+          // 2. Load from Local Storage
+          loadFromStorage(); 
+          
+          // 3. Try to fetch from Sheets
+          if (IS_ONLINE) {
+              const sheetData = await fetchDataFromSheets();
+              if (sheetData.records.length > 0) {
+                  // Overwrite local records with Sheets data, and map column names
+                  store.records = sheetData.records.map(r => ({
+                      // Note: We assume the Sheets column 'id' is a unique row identifier
+                      id: r.id || ('r' + Date.now() + Math.random()), 
+                      date: r.date,
+                      account: r.account,
+                      desc: r.description, // Sheet column name is 'description', local is 'desc'
+                      amount: Number(r.amount),
+                      sign: getSignForAccount(r.account),
+                  }));
+                  updateSyncStatus('Synced', 'var(--success)');
+              } else {
+                  // Sheets has no data, or fetch failed gracefully. Keep local store data.
+                  if (SYNC_STATUS === 'Synced') {
+                      updateSyncStatus('Synced (Empty Sheet)', 'var(--success)');
+                  }
+              }
+          }
+          
+          // 4. Final render
           const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
           applyTheme(savedTheme);
           
@@ -1341,30 +1262,27 @@ const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipo
               initialHeader.setAttribute('data-sort-order', currentSort.order);
           }
           
-          // 3. Attempt to Sync Data (This runs the full hybrid logic)
-          await loadDataFromSheets(); 
+          if(store.logs.length === 0){
+              store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
+          }
 
-          // 4. Final Render
           setQuickFilter('today'); 
           renderLogs();
-          // recalcGrandTotal() and applyFilter() are called inside loadDataFromSheets
+          recalcGrandTotal(); 
+          applyFilter();
       }
 
-      // Listener for when the browser comes back online
-      window.addEventListener('online', () => {
-          addLog(`[${nowTsForLog()}] Network status: ONLINE. Starting re-sync.`);
-          loadDataFromSheets(); 
-      });
-      window.addEventListener('offline', () => {
-          isOnline = false;
-          updateStatus('Offline (Cache)', 'var(--danger)');
-          addLog(`[${nowTsForLog()}] Network status: OFFLINE.`);
-      });
+      // Initial Call
+      loadAllData();
       
-      initializeApp(); 
+      // Register Service Worker for PWA/Offline access
+      if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js')
+              .then(reg => console.log('Service Worker registered.', reg))
+              .catch(err => console.error('Service Worker registration failed: ', err));
+      }
 
     })();
   </script>
 </body>
 </html>
-
