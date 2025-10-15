@@ -1,9 +1,9 @@
-const CACHE_NAME = 'homeledger-cache-v1-4-9-sheets-v1';
+const CACHE_NAME = 'homeledger-cache-v1-4-9-sheets-v2';
 const urlsToCache = [
   // Core files to be cached for offline use
-  './', // Caches index.html implicitly
+  './', 
   './index.html',
-  './app.html', // The main application code
+  './app.html', // The main application code (Your preferred UI)
   './sw.js', 
 ];
 
