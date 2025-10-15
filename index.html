@@ -41,29 +41,32 @@
     </div>
 
     <script>
+        const APP_URL = './app.html';
+        const SW_URL = './sw.js';
+        
         // 1. Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
+            navigator.serviceWorker.register(SW_URL)
                 .then(registration => {
                     console.log('Service Worker registered successfully:', registration.scope);
                     document.querySelector('.status').textContent = 'Service Worker Ready. Loading App...';
                     
                     // Redirect to the main application page
                     setTimeout(() => {
-                        window.location.replace('./app.html');
+                        window.location.replace(APP_URL);
                     }, 100); 
 
                 })
                 .catch(error => {
                     console.error('Service Worker registration failed:', error);
-                    document.querySelector('.status').textContent = 'Error: Service Worker registration failed.';
+                    document.querySelector('.status').textContent = 'Error: Service Worker registration failed. Loading App directly...';
                     // If registration fails, still try to load the app directly
-                    window.location.replace('./app.html');
+                    window.location.replace(APP_URL);
                 });
         } else {
-            document.querySelector('.status').textContent = 'Warning: Offline support not available.';
+            document.querySelector('.status').textContent = 'Warning: Offline support not available. Loading App directly...';
             // If no service worker support, just load the app directly
-            window.location.replace('./app.html');
+            window.location.replace(APP_URL);
         }
     </script>
 </body>
