@@ -1,74 +1,73 @@
-const CACHE_NAME = 'homeledger-cache-v1-4-9-sheets-v2';
-const urlsToCache = [
-  // Core files to be cached for offline use
-  './', 
-  './index.html',
-  './app.html', // The main application code (Your preferred UI)
-  './sw.js', 
+const CACHE_NAME = 'homeledger-v1.4.9'; 
+const REQUIRED_FILES = [
+    '/',
+    'index.html',
+    // manifest.json is required for PWA installation prompt
+    'manifest.json', 
 ];
 
-// 1. Installation: Cache the core assets
-self.addEventListener('install', event => {
-  console.log('[Service Worker] Installing...');
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[Service Worker] Caching app shell');
-        return cache.addAll(urlsToCache);
-      })
-  );
+// 1. Installation: Cache the required files
+self.addEventListener('install', (event) => {
+    // Force the new service worker to take over immediately
+    self.skipWaiting();
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('[Service Worker] Caching all required assets.');
+                return cache.addAll(REQUIRED_FILES);
+            })
+            .catch((error) => {
+                console.error('[Service Worker] Installation failed:', error);
+            })
+    );
 });
 
 // 2. Activation: Clean up old caches
-self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activating...');
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('[Service Worker] Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
         })
-      );
-    }).then(() => self.clients.claim())
-  );
+    );
+    // Claim control of clients to ensure new pages use the new Service Worker immediately
+    event.waitUntil(self.clients.claim());
 });
 
-// 3. Fetching: Strategy for App files (Cache First) and API (Network First)
-self.addEventListener('fetch', event => {
-  // Strategy for Google Sheets API: Network First with a simulated offline response
-  if (event.request.url.includes('script.google.com/macros/s/')) {
-    event.respondWith(fetch(event.request)
-        .catch(() => {
-            // This is the fallback when network is unavailable.
-            console.log('[Service Worker] Sheets API request failed (Offline or Error).');
-            
-            // Return a 503 response so the app's JS can handle the failure gracefully
-            return new Response(JSON.stringify({ 
-                result: 'error', 
-                message: 'Offline access: Failed to reach Google Sheets API.' 
-            }), {
-                status: 503,
-                headers: { 'Content-Type': 'application/json' }
+// 3. Fetching: Serve cached content first, then fall back to network.
+self.addEventListener('fetch', (event) => {
+    // Only process GET requests (safe for APIs and assets)
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    const url = new URL(event.request.url);
+
+    // Skip the Google Sheets API URL from caching (Always fetch fresh data)
+    // IMPORTANT: This ensures your data is never served from an old cache version
+    if (url.origin === 'https://script.google.com') {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+    
+    // Strategy: Cache-First for all other requests (our static assets)
+    event.respondWith(
+        caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+                // If a match is found in the cache, return it (Cache-First)
+                return cachedResponse;
+            }
+            // If no match is found, fetch from the network
+            return fetch(event.request).catch((error) => {
+                console.error('Fetch failed:', error);
+                // In a real PWA, you might return a generic offline page here.
             });
         })
     );
-    return;
-  }
-  
-  // Strategy for App Files (HTML, JS, CSS): Cache First
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      if (response) {
-        // Serve the file from the cache
-        return response;
-      }
-      // If not in cache, fetch from network
-      return fetch(event.request);
-    })
-  );
 });
