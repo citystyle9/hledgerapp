@@ -32,521 +32,1005 @@
       --bg:#f9fafb; 
       --panel:#ffffff; 
       --glass-border:#e5e7eb; 
-      --muted:#1f2937;
-      --text-color: var(--muted);
-      --input-bg: var(--panel);
-      --input-border: var(--glass-border);
-    }
-
-    body[data-theme="terminal"]{
-      --bg:#000000; 
-      --panel:#1f2937;
-      --glass-border:#374151;
-      --muted:#00ff41; 
-      --accent: var(--muted);
-      --text-color: var(--muted);
-      --input-bg: var(--bg);
-      --input-border: var(--muted);
-    }
-
-    /* ------------------------------------------------------------------- */
-    /* 2. Global Styles and Layout */
-    /* ------------------------------------------------------------------- */
-    *{box-sizing:border-box}
-    html,body{padding:0; margin:0; height:100%;}
-    body{
-      font-family:var(--font); 
-      background-color:var(--bg); 
-      color:var(--text-color); 
-      display:flex; 
-      flex-direction:column;
-      overflow-y:scroll;
-      transition: background-color 0.3s, color 0.3s;
-    }
-
-    /* main structure */
-    #header{
-      display:flex; justify-content:space-between; align-items:center;
-      padding:var(--gap); border-bottom:1px solid var(--glass-border);
-      gap:var(--gap); position:sticky; top:0; z-index:10; background-color:var(--bg);
-    }
-    #controls{display:flex; gap:var(--gap); align-items:center;}
-    #app-container{
-      display:grid; grid-template-rows:auto 1fr auto; 
-      padding:var(--gap); gap:var(--gap); flex-grow:1;
-    }
-    #grand-total{
-      font-size:2rem; font-weight:700; text-align:center; padding:var(--gap) 0;
-    }
-    #quick-filters{display:flex; justify-content:center; gap:var(--gap); padding:5px 0;}
-    #records-header{
-      display:flex; padding:var(--gap); font-weight:700;
-      border-bottom:1px solid var(--glass-border);
-    }
-    #records-list{flex-grow:1;}
-    #footer{
-      padding:var(--gap); border-top:1px solid var(--glass-border); 
-      text-align:center; font-size:0.8rem; color:var(--glass-border);
-      margin-top:auto;
-    }
-
-    /* ------------------------------------------------------------------- */
-    /* 3. Utility Components (Buttons, Inputs, etc.) */
-    /* ------------------------------------------------------------------- */
-    .btn{
-      padding:8px 15px; border:1px solid var(--input-border); 
-      background-color:var(--panel); color:var(--text-color); 
-      cursor:pointer; font-size:1rem; border-radius:4px;
-      transition:all 0.2s;
-    }
-    .btn:hover{
-      background-color:var(--glass-border); 
-      border-color:var(--text-color);
-    }
-    .btn.accent{background-color:var(--accent); color:var(--bg); border-color:var(--accent);}
-    .btn.accent:hover{background-color:#4b8afc; border-color:#4b8afc;}
-    .btn.danger{background-color:var(--danger); color:var(--bg); border-color:var(--danger);}
-    .btn.danger:hover{background-color:#c83b3b; border-color:#c83b3b;}
-    .btn.filter{
-      padding:5px 10px; font-size:0.9rem; background-color:var(--bg);
-      border-color:var(--glass-border);
-    }
-    .btn.filter.active{
-      background-color:var(--active-filter-bg); color:var(--bg); border-color:var(--active-filter-bg);
-    }
-
-    input, select{
-      padding:8px 10px; border:1px solid var(--input-border); 
-      background-color:var(--input-bg); color:var(--text-color); 
-      border-radius:4px; font-size:1rem;
-    }
-    input:focus, select:focus{
-      outline:1px solid var(--focus-outline-color); 
-      border-color:var(--focus-outline-color);
-    }
-    
-    /* ------------------------------------------------------------------- */
-    /* 4. Records List Specifics */
-    /* ------------------------------------------------------------------- */
-    .record, #records-header{
-      display:grid;
-      /* Main grid layout for all records */
-      grid-template-columns: 120px 100px 1fr 100px 80px;
-      gap:5px;
-      align-items:center;
-    }
-    .record{
-      padding:var(--gap); border-bottom:1px solid var(--glass-border);
-      font-size:0.9rem;
-    }
-    .record:last-child{border-bottom:none;}
-    .record:hover{background-color:var(--panel);}
-
-    .record-col{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-    .record-col:nth-child(4){text-align:right; font-weight:700;}
-    .record-col:nth-child(5){text-align:center;}
-
-    /* Styling for Expense/Income */
-    .record-col.sign[data-sign="-"]{color:var(--danger);}
-    .record-col.sign[data-sign="+"]{color:var(--success);}
-    
-    /* Sort Indicator */
-    #records-header > div{cursor:pointer; user-select:none; position:relative;}
-    #records-header > div:hover{color:var(--accent);}
-    #records-header > div[data-sort-order]::after{
-        content:'\25b2'; /* Up arrow */
-        margin-left:5px; font-size:0.7em;
-        position:absolute; right:0; top:5px;
-    }
-    #records-header > div[data-sort-order="desc"]::after{
-        content:'\25bc'; /* Down arrow */
-    }
-
-    /* ------------------------------------------------------------------- */
-    /* 5. Modal and Overlay */
-    /* ------------------------------------------------------------------- */
-    #overlay{
-      position:fixed; top:0; left:0; right:0; bottom:0; 
-      background-color:rgba(0,0,0,0.8); z-index:100;
-      display:none; justify-content:center; align-items:center;
-    }
-    #modal{
-      background-color:var(--panel); padding:20px; 
-      border-radius:8px; width:90%; max-width:400px;
-      display:flex; flex-direction:column; gap:var(--gap);
-      border:1px solid var(--glass-border);
-    }
-    #modal h3{margin-top:0; color:var(--accent);}
-    #modal label{font-size:0.9rem; margin-bottom:5px; display:block;}
-    #modal input, #modal select{width:100%; margin-top:5px;}
-    #modal-actions{display:flex; justify-content:flex-end; gap:var(--gap); margin-top:var(--gap);}
-    .form-group{margin-bottom:var(--gap);}
-
-    /* ------------------------------------------------------------------- */
-    /* 6. Mobile Responsiveness */
-    /* ------------------------------------------------------------------- */
-    @media (max-width: 420px) {
-      /* Hide unnecessary columns on very small screens (iPhone 6/7/8/X size) */
-      .record, #records-header {
-        /* Grid: Date | Account | Description | Amount | Action */
-        /* Hiding 2nd (Account), 3rd (Description), 5th (Action) */
-        /* New Grid: Date | Amount | Action */
-        grid-template-columns: 1fr 100px 50px; 
-        padding: 10px 8px;
-        font-size: 0.85rem;
-      }
-      .record-col:nth-child(2), /* Account */
-      .record-col:nth-child(3), /* Description */
-      .record-col:nth-child(5) /* Action (hiding button column for simplicity, showing only edit/delete within record) */
-      {
-        display: none;
-      }
-      .record-col:nth-child(1) { width: auto; } /* Date */
-      .record-col:nth-child(4) { /* Amount */
-        grid-column: 2 / 3;
-        text-align: right;
-      }
-      .record-col:nth-child(5) {
-        grid-column: 3 / 4;
-      }
+      --muted:#111827; 
       
-      #header {
-        flex-direction: column;
-        align-items: stretch;
+      --accent:#2563eb; --success:#059669; --warning:#b45309; --danger:#b91c1c;
+      
+      --text-color: var(--muted);
+      --input-bg: var(--panel); 
+      --input-border: var(--glass-border);
+      --focus-outline-color: var(--accent); 
+      --active-filter-bg: var(--accent);
+      
+      color:var(--text-color);
+    }
+    
+    /* ------------------------------------------------------------------- */
+    /* 2. General Styles and Layout */
+    /* ------------------------------------------------------------------- */
+    body{background:var(--bg);color:var(--text-color);font-family:var(--font);margin:0;padding:0;display:flex;justify-content:center;padding:14px;transition:background .2s,color .2s}
+    .wrap{width:100%;max-width:920px;padding:12px;display:flex;flex-direction:column;gap:var(--gap)}
+    
+    .topbar, .balance-card, .filter-card, .records, .modal{
+        background:var(--panel);
+        border:1px solid var(--glass-border);
+        border-radius:6px;
+        box-shadow: none;
+    }
+
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
+    .brand{font-weight:700}
+    .controls{display:flex;gap:8px;align-items:center}
+    details.menu{position:relative}
+    details summary{cursor:pointer;padding:2px 6px}
+    details .dropdown{position:absolute;right:0;top:28px;background:var(--panel);color:inherit;border-radius:6px;padding:6px;border:1px solid var(--glass-border)}
+    details .dropdown button{display:block;width:100%;text-align:left;padding:6px;border:none;background:transparent;color:inherit;cursor:pointer}
+    details .dropdown button#btn-reset {
+        color: var(--danger);
+        font-weight: 700;
+        border-top: 1px solid var(--glass-border);
+        margin-top: 4px;
+        padding-top: 8px;
+    }
+
+    .balance-card{padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .balance-left .big{font-size:18px;font-weight:800;color:var(--accent)}
+    .summary-item{font-size:13px}
+    .actions{display:flex;flex-direction:column;gap:8px}
+
+    /* Button Styles */
+    .big-btn{width:100%;padding:10px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:14px}
+    .big-btn.income{background:var(--success);color:#fff}
+    .big-btn.loan{background:var(--warning);color:#111}
+    .big-btn.expense{background:var(--danger);color:#fff}
+
+    .filter-card{padding:10px}
+    .filter-row{display:flex;flex-direction:column;gap:6px}
+    
+    /* Input/Select Styles & FOCUS FIX */
+    input,select{
+        width:100%;padding:8px;border-radius:6px;
+        border:1px solid var(--input-border);
+        background:var(--input-bg); 
+        color:var(--text-color); 
+        box-sizing: border-box; 
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, button:focus{
+        outline: none;
+        border-color: var(--focus-outline-color);
+        box-shadow: 0 0 0 2px var(--focus-outline-color);
+    }
+    /* Disabled state style */
+    select:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    /* Date Picker Fixes (Calendar Icon & Text) */
+    input[type="date"]::-webkit-datetime-edit-text,
+    input[type="date"]::-webkit-datetime-edit-month-field,
+    input[type="date"]::-webkit-datetime-edit-day-field,
+    input[type="date"]::-webkit-datetime-edit-year-field,
+    input[type="date"]::-webkit-datetime-edit-literal { 
+        color: var(--text-color);
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1) brightness(0.9);
+        cursor: pointer;
+    }
+    body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: none;
+    }
+    
+    /* ------------------------------------------------------------------- */
+    /* 3. Quick Filter Styles (UX FIX) */
+    /* ------------------------------------------------------------------- */
+    .quick-filters{
+      display:flex;
+      flex-wrap: wrap; 
+      gap:6px;
+      margin-top: 2px; 
+      margin-bottom: 2px; 
+    }
+    .quick-filters button{
+      flex: 1 1 auto; 
+      padding: 6px 8px;
+      border: 1px solid var(--input-border);
+      background: var(--input-bg); 
+      color: var(--text-color);
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: background 0.2s;
+    }
+    .quick-filters button:hover{
+      background: var(--glass-border);
+    }
+    .quick-filters button.active {
+        background: var(--active-filter-bg);
+        color: var(--bg);
+        border-color: var(--active-filter-bg);
+        font-weight: 700;
+    }
+
+    /* ------------------------------------------------------------------- */
+    /* 4. Records & Sorting Styles (FEATURE FIX) */
+    /* ------------------------------------------------------------------- */
+    .records{overflow:hidden}
+    .records-head{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;font-weight:700;background:rgba(255,255,255,0.08);border-bottom:1px solid var(--glass-border)}
+    
+    .records-head > div {
+        cursor: pointer;
+        padding-right: 15px;
+        position: relative;
+    }
+    .records-head > div:hover {
+        opacity: 0.8;
+    }
+    .records-head > div[data-sort-order]::after {
+        content: ' ';
+        position: absolute;
+        right: 0px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 10px;
+    }
+    .records-head > div[data-sort-order="asc"]::after {
+        content: '▲';
+    }
+    .records-head > div[data-sort-order="desc"]::after {
+        content: '▼';
+    }
+
+    .record-row{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;border-bottom:1px solid var(--glass-border);align-items:center}
+    .record-actions button{background:none;border:none;color:var(--text-color);cursor:pointer;transition:color 0.1s}
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 10px;
+        color: var(--glass-border);
+        font-size: 14px;
+    }
+
+    /* Added Status Element to Footer */
+    footer{text-align:center;font-size:12px;opacity:0.9;margin-top:10px; color: var(--text-color);}
+    .gs-status { margin-left: 5px; font-weight: 700; }
+    
+    /* ------------------------------------------------------------------- */
+    /* 5. Modals and Delete Confirmation (UX FIX) */
+    /* ------------------------------------------------------------------- */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:none;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}
+    .overlay.show{display:flex}
+    .modal{
+        width:100%;max-width:560px;
+        background:var(--panel);
+        border:1px solid var(--glass-border);
+        border-radius:8px;
+        padding:16px;
+        box-shadow:0 6px 15px rgba(0,0,0,0.4);
+    }
+    
+    .delete-modal-content {
+        padding: 10px 0;
+    }
+    .delete-modal-content p {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+    }
+    .delete-modal-content .record-details {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        font-size: 13px;
+        word-break: break-word;
+    }
+    
+    /* Modal Button Styles */
+    .modal h2{margin:0 0 8px 0;font-size:16px}
+    .modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
+    .modal input[type="text"],.modal input[type="date"],.modal input[type="number"],.modal select{
+        width:100%;padding:10px;border-radius:6px;
+        border:1px solid var(--input-border);
+        background:var(--input-bg);
+        color:var(--text-color); 
+        box-sizing: border-box; 
+    }
+    .modal .row-2{display:block;} 
+    .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+    .btn-cancel{background:transparent;border:1px solid var(--glass-border);color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer}
+    .btn-save{padding:8px 12px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
+    .btn-save.income{background:var(--success);color:#fff}
+    .btn-save.loan{background:var(--warning);color:#111}
+    .btn-save.expense{background:var(--danger);color:#fff}
+    .btn-delete-confirm { background: var(--danger); color: #fff; }
+    
+    .log-list{max-height:400px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-top:8px}
+    .log-item{font-size:13px;background:rgba(255,255,255,0.08);padding:8px;border-radius:6px}
+    
+    /* ------------------------------------------------------------------- */
+    /* 6. Media Queries & Scrollbar Fixes (MOBILE FIX APPLIED HERE) */
+    /* ------------------------------------------------------------------- */
+    @media (max-width:860px){.main-grid{grid-template-columns:1fr}}
+    @media (max-width:420px){
+      .balance-card { flex-direction: column; align-items: stretch; }
+      .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+      .quick-filters button { flex: 1 1 48%; }
+      
+      /* FIX: Records Table on Mobile - Show Date, Amount, Action */
+      .records-head, .record-row {
+          /* Set grid for 3 items: Date(80px), Amount(1fr), Action(50px) */
+          /* Note: These are the 1st, 4th, and 5th items in the HTML */
+          grid-template-columns: 80px 1fr 50px;
       }
-      #controls {
-        justify-content: space-between;
-        width: 100%;
-      }
-      #modal {
-        max-width: 95%;
-        margin: 10px;
-      }
-      #records-header > div:nth-child(2), /* Account Header */
-      #records-header > div:nth-child(3), /* Description Header */
-      #records-header > div:nth-child(5) /* Action Header */
-      {
+      /* Hide Account (2nd) and Description (3rd) */
+      .records-head div:nth-child(2), .record-row div:nth-child(2), 
+      .records-head div:nth-child(3), .record-row div:nth-child(3) {
           display: none;
       }
-      /* Re-styling the mobile visible headers */
-      #records-header > div:nth-child(1) { grid-column: 1 / 2; }
-      #records-header > div:nth-child(4) { grid-column: 2 / 3; text-align: right; }
+      /* Ensure Amount (4th) and Action (5th) are visible */
+      .records-head div:nth-child(4), .record-row div:nth-child(4), 
+      .records-head div:nth-child(5), .record-row div:nth-child(5) {
+          /* Override any previous display:none that might have been there */
+          display: flex; /* Amount and Action should be visible */
+          align-items: center; /* Center the content for Action */
+          justify-content: center;
+      }
+
     }
     
-    /* Logs Modal */
-    #logs-modal {
-        max-height: 80vh; 
-        overflow-y: auto; 
-        width: 90%; 
-        max-width: 600px;
-        font-family: monospace;
-        font-size: 0.8rem;
+    /* THEME ICON HIGHLIGHT CSS START */
+    .theme-toggle{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width: 40px; 
+      height: 20px;
+      padding: 0;
+      border-radius: 12px;
+      border:1px solid var(--glass-border);
+      cursor:pointer;
+      background:transparent;
+      position: relative;
+      font-size: 14px;
+      overflow: hidden; 
     }
-    .log-entry {
-        border-bottom: 1px dotted var(--glass-border);
-        padding: 5px 0;
+    /* Set icon based on current theme */
+    .theme-toggle::before {
+        content: '🌙'; /* Default is Dark Mode, so show Moon (switch to Sun) */
+        color: var(--text-color);
+        position: absolute;
+        transition: transform 0.2s ease-in-out;
     }
-    .log-entry:last-child {
-        border-bottom: none;
+    body[data-theme="light"] .theme-toggle::before {
+        content: '☀️'; /* Light Mode, so show Sun (switch to Moon) */
+        transform: translateX(0);
     }
-
+    /* THEME ICON HIGHLIGHT CSS END */
+    
+    .hidden-file{display:none}
+    
+    .log-list::-webkit-scrollbar, body::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    .log-list::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+    .log-list::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
+        background: var(--glass-border);
+        border-radius: 4px;
+    }
+    .log-list::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+    }
+    /* ------------------------------------------------------------------- */
   </style>
 </head>
 <body>
-
-  <div id="header">
-    <div id="app-title">
-      <span style="font-size:1.5rem; font-weight:700;">HomeLedger</span> 
-      <span style="font-size:0.8rem; color:var(--glass-border);">v1.4.9 (G-Sheets)</span>
-    </div>
-    <div id="controls">
-      <button class="btn" id="add-record-btn">Add Record</button>
-      <button class="btn" id="logs-btn">Logs</button>
-      <button class="btn" id="theme-toggle">Theme</button>
-    </div>
-  </div>
-
-  <div id="app-container">
-    <div id="grand-total"></div>
-    
-    <div id="quick-filters">
-      <button class="btn filter" data-filter="all">All</button>
-      <button class="btn filter" data-filter="today">Today</button>
-      <button class="btn filter" data-filter="week">7 Days</button>
-      <button class="btn filter" data-filter="month">30 Days</button>
-    </div>
-
-    <div id="records-table">
-      <div id="records-header">
-        <div data-sort-key="date">Date</div>
-        <div data-sort-key="account">Account</div>
-        <div data-sort-key="desc">Description</div>
-        <div data-sort-key="amount">Amount</div>
-        <div>Action</div>
+  <div class="wrap" id="app">
+    <div class="topbar">
+      <div class="brand">HomeLedger</div>
+      <div class="controls">
+        <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
+        <details class="menu">
+          <summary>⋮</summary>
+          <div class="dropdown">
+            <button id="btn-log">📜 View Activity Log</button>
+            <button id="btn-backup">Backup (Local)</button>
+            <button id="btn-restore">Restore (Local)</button>
+            <button id="btn-export">Export CSV (Local)</button>
+            <button id="btn-reset">⚠️ Delete All Local Data</button>
+          </div>
+        </details>
       </div>
-      <div id="records-list">
-        </div>
     </div>
-  </div>
 
-  <div id="footer">
-    Data is stored in Google Sheets via Google Apps Script. 
-    <span id="gs-status" style="color:var(--warning);">Loading...</span>
-  </div>
+    <div class="main-grid">
+      <div class="left-col">
 
-  <div id="overlay">
-    <div id="modal">
-      <h3 id="modal-title">Add New Record</h3>
-      <form id="record-form">
-        <div class="form-group">
-          <label for="date-input">Date:</label>
-          <input type="date" id="date-input" required />
+        <div class="balance-card" id="balance-card">
+          <div class="balance-left">
+            <div style="font-size:13px;color:var(--muted)">Current Balance (Total)</div>
+            <div class="big" id="current-balance">Rs 0</div>
+          </div>
+          <div class="balance-right" style="display:flex;gap:12px;align-items:center">
+            <div class="summary-item"><strong>Income:</strong> <span id="sum-income" style="color:var(--success);font-weight:700">Rs 0</span></div>
+            <div class="summary-item"><strong>Loan:</strong> <span id="sum-loan" style="color:var(--warning);font-weight:700">Rs 0</span></div>
+            <div class="summary-item"><strong>Expense:</strong> <span id="sum-expense" style="color:var(--danger);font-weight:700">Rs 0</span></div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="account-select">Account:</label>
-          <select id="account-select" required>
+
+        <div class="actions" style="margin-top:10px">
+          <button class="big-btn income" data-action="income">+ Add Income</button>
+          <button class="big-btn loan" data-action="loan">+ Add Loan</button>
+          <button class="big-btn expense" data-action="expense">+ Add Expense</button>
+        </div>
+
+        <div class="filter-card" style="margin-top:10px">
+          <strong>Filter Records</strong>
+          
+          <div class="filter-row">
+            <input id="filter-search" type="text" placeholder="Search by description or amount">
+            
+            <select id="filter-account">
+              <option>All Accounts</option>
+              <option>Income</option>
+              <option>Loan</option>
+              <option>Expense</option>
             </select>
+
+            <div class="quick-filters">
+              <button id="quick-today">Today</button>
+              <button id="quick-yesterday">Yesterday</button>
+              <button id="quick-month">Current Month</button>
+              <button id="quick-fiscal">Fiscal Year</button>
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <input id="filter-from" type="date">
+              <input id="filter-to" type="date">
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="desc-input">Description:</label>
-          <input type="text" id="desc-input" placeholder="e.g. Salary, Rent, Groceries" required />
-        </div>
-        <div class="form-group">
-          <label for="amt-input">Amount:</label>
-          <input type="number" id="amt-input" min="0.01" step="0.01" required />
-        </div>
-        <div id="modal-actions">
-          <button type="button" class="btn" id="cancel-btn">Cancel</button>
-          <button type="submit" class="btn accent" id="save-btn">Save Record</button>
-        </div>
-      </form>
+
+        <section class="records" id="records-section" style="margin-top:10px">
+          <div class="records-head">
+            <div data-sort-key="date" data-sort-order="desc">Date</div>
+            <div data-sort-key="account">Account</div>
+            <div>Description</div>
+            <div data-sort-key="amount">Amount</div>
+            <div>Action</div>
+          </div>
+          </section>
+
+      </div>
     </div>
+
+    <footer>
+        HomeLedger v1.4.9 | Status: 
+        <span id="gs-status" class="gs-status" style="color:var(--warning);">Loading...</span>
+    </footer>
   </div>
 
-  <div id="logs-overlay" style="display:none;">
-    <div id="logs-modal" class="modal">
-      <h3 id="logs-modal-title">Application Logs</h3>
-      <div id="logs-content" style="border:1px solid var(--glass-border); padding:10px; border-radius:4px;">
-        </div>
-      <div id="modal-actions">
-        <button type="button" class="btn" id="close-logs-btn">Close</button>
+  <div class="overlay" id="log-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>📜 Activity Log</h2>
+      <div id="activity-log-modal" class="log-list"></div>
+      <div class="actions-row" style="margin-top:8px">
+        <button class="btn-cancel" id="log-close">Close</button>
       </div>
     </div>
   </div>
+
+  <div class="overlay" id="modal-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 id="modal-title">Add New Entry</h2>
+      <div>
+        <label for="entry-date">Date</label>
+        <input id="entry-date" type="date" required/>
+      </div>
+      <div style="margin-top:8px">
+        <label for="entry-account">Account</label>
+        <select id="entry-account">
+          <option>Income</option>
+          <option>Loan</option>
+          <option>Expense</option>
+        </select>
+      </div>
+      <div style="margin-top:8px">
+        <label for="entry-desc">Description</label>
+        <input id="entry-desc" type="text" placeholder="e.g. Salary, Fuel, Phone bill" required/>
+      </div>
+      <div class="row-2" style="margin-top:8px">
+        <div>
+          <label for="entry-amount">Amount</label>
+          <input id="entry-amount" type="number" min="0.01" step="any" placeholder="0" required/>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="overlay" id="delete-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
+      <div class="delete-modal-content">
+        <p>⚠️ **Warning:** The Delete button is disabled in this Sheets version. To delete this record, you must manually find and delete Row ID <strong id="delete-row-id"></strong> in your Google Sheet.</p>
+        <div class="record-details" id="delete-record-details"></div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="delete-cancel">Close</button>
+        <button class="btn-save btn-delete-confirm" id="delete-confirm-btn" data-id="" disabled>Delete (Disabled)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="reset-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 style="color:var(--danger)">⚠️ Confirm Full Reset</h2>
+      <div class="delete-modal-content">
+        <p><strong>This action cannot be undone.</strong> All your financial records, activity logs, and settings will be permanently deleted and the app will restart empty.</p>
+        <p>We recommend you create a **Backup (JSON)** before proceeding.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="reset-cancel">Cancel</button>
+        <button class="btn-save btn-delete-confirm" id="reset-confirm-btn">Yes, Delete All Data</button>
+      </div>
+    </div>
+  </div>
+
+
+  <input id="restore-file" class="hidden-file" type="file" accept="application/json" />
 
   <script>
-    // -------------------------------------------------------------------
-    // 0. Environment Setup and Globals
-    // -------------------------------------------------------------------
-    
-    // ✅ Apps Script URL
-    const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS/exec';
-    
-    const STORAGE_KEY = 'homeledger_google_store_data_v1'; 
-    const THEME_KEY = 'homeledger_theme';
-    const VERSION_TAG = 'v1.4.9 (G-Sheets)';
+    (function(){
+      // -------------------------------------------------------------------
+      // 0. GOOGLE SHEETS API SETUP (NEW)
+      // -------------------------------------------------------------------
+      const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS/exec';
+      
+      // -------------------------------------------------------------------
+      // 1. DOM References and Constants
+      // -------------------------------------------------------------------
+      const overlay = document.getElementById('modal-overlay');
+      const deleteOverlay = document.getElementById('delete-overlay');
+      const deleteCancelBtn = document.getElementById('delete-cancel');
+      const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+      const deleteDetailsDiv = document.getElementById('delete-record-details');
+      const deleteRowIdEl = document.getElementById('delete-row-id');
+      const resetOverlay = document.getElementById('reset-overlay'); 
+      const resetCancelBtn = document.getElementById('reset-cancel'); 
+      const resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
+      const title = document.getElementById('modal-title');
+      const accountSelect = document.getElementById('entry-account');
+      const saveBtn = document.getElementById('modal-save');
+      const cancelBtn = document.getElementById('modal-cancel');
+      const dateInput = document.getElementById('entry-date');
+      const descInput = document.getElementById('entry-desc');
+      const amtInput = document.getElementById('entry-amount');
+      const recordsSection = document.getElementById('records-section');
+      const recordsHead = recordsSection.querySelector('.records-head');
+      const logOverlay = document.getElementById('log-overlay');
+      const logClose = document.getElementById('log-close');
+      const btnLog = document.getElementById('btn-log');
+      const btnReset = document.getElementById('btn-reset');
+      const filterSearch = document.getElementById('filter-search');
+      const filterAccount = document.getElementById('filter-account');
+      const filterFrom = document.getElementById('filter-from');
+      const filterTo = document.getElementById('filter-to');
+      const btnBackup = document.getElementById('btn-backup');
+      const btnRestore = document.getElementById('btn-restore');
+      const btnExport = document.getElementById('btn-export');
+      const themeToggle = document.getElementById('theme-toggle'); 
+      const restoreFileInput = document.getElementById('restore-file');
+      const gsStatusEl = document.getElementById('gs-status'); // NEW
 
-    // Default State and Store
-    const defaultAccounts = {
-        'Wallet (Cash)': { type: 'asset', sign: '-' },
-        'Bank (HBL)': { type: 'asset', sign: '-' },
-        'Salary (Income)': { type: 'income', sign: '+' }
-    };
+      
+      const quickFilterButtons = {
+          today: document.getElementById('quick-today'),
+          yesterday: document.getElementById('quick-yesterday'),
+          month: document.getElementById('quick-month'),
+          fiscal: document.getElementById('quick-fiscal')
+      };
 
-    const defaultSort = { key: 'date', order: 'desc' };
+      const STORAGE_KEY = 'homeledger_v1_data_v1';
+      const THEME_KEY = 'homeledger_theme_v1';
+      const SORT_KEY = 'homeledger_sort_v1';
+      // VERSION: Update the log entry version to 1.4.9
+      const VERSION_TAG = 'HomeLedger v1.4.9 (G-Sheets)'; 
+      let store = { records: [], logs: [] };
+      let currentSort = { key: 'date', order: 'desc' };
 
-    let store = {
-        records: [], // Ab records Google Sheets se load honge
-        accounts: defaultAccounts,
-        currentSort: defaultSort,
-        quickFilter: 'today',
-        logs: [],
-        grandTotal: 0
-    };
-    
-    // Global utility function for logging timestamp
-    const nowTsForLog = () => new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-    const seedSampleData = () => []; 
-
-    // -------------------------------------------------------------------
-    // 1. DOM References
-    // -------------------------------------------------------------------
-    const overlay = document.querySelector('#overlay');
-    const logsOverlay = document.querySelector('#logs-overlay');
-    const modal = document.querySelector('#modal');
-    const recordsList = document.querySelector('#records-list');
-    const recordsHead = document.querySelector('#records-header');
-    const quickFilters = document.querySelector('#quick-filters');
-    const grandTotalEl = document.querySelector('#grand-total');
-    const accountSelect = document.querySelector('#account-select');
-    const dateInput = document.querySelector('#date-input');
-    const descInput = document.querySelector('#desc-input');
-    const amtInput = document.querySelector('#amt-input');
-    const form = document.querySelector('#record-form');
-    const gsStatusEl = document.querySelector('#gs-status');
-    
-    let currentMode = 'add'; // 'add' or 'edit'
-
-    // -------------------------------------------------------------------
-    // 2. Data Storage and Retrieval (MODIFIED FOR GOOGLE SHEETS)
-    // -------------------------------------------------------------------
-
-    function saveToStorage() {
-        // Ab ye function Local Storage main sirf settings aur logs save karega, records nahi.
-        const dataToSave = {
-            logs: store.logs,
-            accounts: store.accounts,
-            currentSort: store.currentSort,
-            quickFilter: store.quickFilter
-        };
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-        renderLogs();
-    }
-
-    function loadFromStorage() {
-        // Ab ye function sirf settings aur logs load karega.
-        const serializedStore = localStorage.getItem(STORAGE_KEY);
-        if (serializedStore) {
-            try {
-                const loadedData = JSON.parse(serializedStore);
-                store.logs = loadedData.logs || [];
-                store.accounts = loadedData.accounts || defaultAccounts;
-                store.currentSort = loadedData.currentSort || defaultSort;
-                store.quickFilter = loadedData.quickFilter || 'today';
-                
-            } catch (e) {
-                console.error("Error loading settings from LocalStorage:", e);
-                store.logs.unshift(`[${nowTsForLog()}] ERROR: Corrupted LocalStorage settings.`);
-            }
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // 3. Data Loading from Google Sheets (NEW CORE FUNCTION)
-    // -------------------------------------------------------------------
-
-    async function loadDataFromSheets() {
-        gsStatusEl.textContent = 'Loading...';
-        gsStatusEl.style.color = 'var(--warning)';
-        recordsList.innerHTML = `<div style="text-align:center; padding: 20px;">Loading data from Google Sheets...</div>`;
-        
-        try {
-            // GET request bhej kar data mangwaen
-            const response = await fetch(SHEET_API_URL, { method: 'GET' });
-            if (!response.ok) {
-                 // Throw an error if the network request fails (e.g., offline)
-                 throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
-            }
-            const data = await response.json();
+      // -------------------------------------------------------------------
+      // 2. Helper Functions (Unchanged)
+      // -------------------------------------------------------------------
+      function pad(n){ return String(n).padStart(2,'0'); }
+      function nowTsForLog(){
+        const d = new Date();
+        return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+      function formatAmount(n,sign){
+        return (sign==='positive'?'+ ':'- ') + 'Rs ' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      function isoFormat(d){
+          const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+          return `${y}-${m}-${dd}`;
+      }
+      function isoToday(){
+        const d = new Date();
+        return isoFormat(d);
+      }
+      function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+      
+      function getFiscalYearDates(){
+          const d = new Date();
+          const year = d.getFullYear();
+          const month = d.getMonth(); 
+          let startYear, endYear;
+          if (month >= 6) { startYear = year; endYear = year + 1; } 
+          else { startYear = year - 1; endYear = year; }
+          const fromDate = new Date(startYear, 6, 1); 
+          const toDate = new Date(endYear, 5, 30);   
+          return { from: isoFormat(fromDate), to: isoFormat(toDate) };
+      }
+      
+      function seedSampleData() {
+          return []; 
+      }
+      // -------------------------------------------------------------------
+      // 3. Persistence & Theme (MODIFIED for Sheets)
+      // -------------------------------------------------------------------
+      function saveToStorage(){
+        try{ 
+            // Save ONLY logs (records come from Sheets)
+            const dataToSave = { logs: store.logs };
             
-            if (data.records) {
-                // Sheets se milay records ko store main daal den
-                store.records = data.records;
-                
-                // Grand Total aur display update karein
-                recalcGrandTotal(); 
-                applyFilter();
-
-                gsStatusEl.textContent = 'Synced';
-                gsStatusEl.style.color = 'var(--success)';
-                store.logs.unshift(`[${nowTsForLog()}] Data loaded from Sheets successfully (${store.records.length} records).`);
-                saveToStorage(); 
+            if (store.logs.length > 0) {
+                 localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
             } else {
-                // Agar records nahi mile to sirf logs update karein
-                gsStatusEl.textContent = 'Loaded (No Records)';
-                gsStatusEl.style.color = 'var(--warning)';
-                store.records = [];
-                recalcGrandTotal(); 
-                applyFilter();
-                store.logs.unshift(`[${nowTsForLog()}] Data loaded, but records array is empty or missing.`);
-                saveToStorage(); 
+                 localStorage.removeItem(STORAGE_KEY);
             }
+            // Save settings keys regardless
+            localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
+        }catch(e){}
+      }
+      
+      function loadFromStorage(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(raw){ 
+              const parsed = JSON.parse(raw); 
+              // Do NOT load parsed.records
+              if(parsed.logs) store.logs = parsed.logs; 
+          }
+          const rawSort = localStorage.getItem(SORT_KEY);
+          if(rawSort) currentSort = JSON.parse(rawSort);
 
-        } catch (error) {
-            gsStatusEl.textContent = 'ERROR!';
-            gsStatusEl.style.color = 'var(--danger)';
-            recordsList.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--danger);">
-                🚨 Error loading data from Google Sheets. Check your Apps Script URL or Network.
-                <br>Details: ${error.message}
-            </div>`;
-            store.logs.unshift(`[${nowTsForLog()}] ERROR: Failed to load data from Sheets: ${error.message}`);
-            saveToStorage();
+        }catch(e){}
+      }
+      
+      function applyTheme(theme){
+        if(theme === 'light') {
+            document.body.setAttribute('data-theme','light');
+            themeToggle.title = 'Switch to Dark Mode';
+            themeToggle.textContent = ''; 
         }
-    }
-
-
-    // -------------------------------------------------------------------
-    // 4. Record Handlers (UPDATED saveHandler)
-    // -------------------------------------------------------------------
-
-    function openModal(mode, record = null) {
-        // ... (Existing openModal code remains the same) ...
-        currentMode = mode;
-        
-        // Populate Account Options
-        accountSelect.innerHTML = Object.keys(store.accounts).map(name => 
-            `<option value="${name}">${name} (${store.accounts[name].sign})</option>`
-        ).join('');
-
-        if (mode === 'add') {
-            document.querySelector('#modal-title').textContent = 'Add New Record';
-            form.reset();
-            dateInput.value = new Date().toISOString().substring(0, 10);
-            overlay.dataset.editId = '';
-        } else {
-            document.querySelector('#modal-title').textContent = 'Edit Record (Sheets v. Simple)';
-            // NOTE: Editing records in a Sheet requires the 'ID' and is more complex. 
-            // For simplicity in this version, we will only show the data.
-            overlay.dataset.editId = record.id;
-            dateInput.value = record.date;
-            accountSelect.value = record.account;
-            descInput.value = record.desc;
-            amtInput.value = record.amount;
-            document.querySelector('#save-btn').textContent = 'Update Record'; // Button text update
-            
-            // NOTE: The actual editing logic in saveHandler will be simplified
+        else {
+            document.body.removeAttribute('data-theme');
+            themeToggle.title = 'Switch to Light Mode';
+            themeToggle.textContent = ''; 
         }
+        try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+      }
+      
+      function toggleTheme(){
+        const cur = localStorage.getItem(THEME_KEY) || 'dark';
+        const next = (cur === 'dark') ? 'light' : 'dark';
+        applyTheme(next);
+        addLog(`[${nowTsForLog()}] Theme changed to ${next}`);
+      }
+
+      // -------------------------------------------------------------------
+      // 3.5. GOOGLE SHEETS DATA HANDLERS (NEW CORE LOGIC)
+      // -------------------------------------------------------------------
+
+      async function loadDataFromSheets() {
+          gsStatusEl.textContent = 'Loading...';
+          gsStatusEl.style.color = 'var(--warning)';
+          recordsSection.innerHTML = `<div style="text-align:center; padding: 20px;">Loading data from Google Sheets...</div>`;
+
+          try {
+              const response = await fetch(SHEET_API_URL, { method: 'GET' });
+              
+              if (!response.ok) {
+                   // This includes the 503 error from the Service Worker when offline
+                   throw new Error(`HTTP Error: ${response.status} ${response.statusText || 'Network Unavailable'}`);
+              }
+              const data = await response.json();
+              
+              if (data.records) {
+                  // Sheets se milay records ko store main daal den
+                  store.records = data.records;
+                  
+                  // Fix: Convert 'sign' to match the Local Storage based UI logic ('positive'/'negative')
+                  store.records.forEach(r => {
+                      // The API returns '+' or '-'
+                      r.sign = r.sign === '+' ? 'positive' : 'negative'; 
+                  });
+
+                  // Grand Total aur display update karein
+                  recalcGrandTotal(); 
+                  applyFilter();
+
+                  gsStatusEl.textContent = 'Synced';
+                  gsStatusEl.style.color = 'var(--success)';
+                  addLog(`[${nowTsForLog()}] Data loaded from Sheets successfully (${store.records.length} records).`);
+              } else {
+                  gsStatusEl.textContent = 'Loaded (No Records)';
+                  gsStatusEl.style.color = 'var(--warning)';
+                  store.records = [];
+                  recalcGrandTotal(); 
+                  applyFilter();
+                  addLog(`[${nowTsForLog()}] Data loaded, but records array is empty or missing.`);
+              }
+
+          } catch (error) {
+              gsStatusEl.textContent = 'ERROR!';
+              gsStatusEl.style.color = 'var(--danger)';
+              
+              // Only clear the records list if a major network failure (not just offline) occurs
+              if (error.message.includes('Network Unavailable') || error.message.includes('Failed to fetch')) {
+                  recordsSection.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--danger);">
+                      🚨 Network Error: Could not reach Google Sheets API. App is running Offline.
+                  </div>`;
+                  // We can't load records, so they remain empty/last state, but we log the error.
+                  addLog(`[${nowTsForLog()}] ERROR: Network failure: ${error.message}`);
+              } else {
+                  recordsSection.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--danger);">
+                      🚨 Error loading data from Google Sheets. Details: ${error.message}
+                  </div>`;
+                  addLog(`[${nowTsForLog()}] ERROR: Failed to load data from Sheets: ${error.message}`);
+              }
+          }
+          saveToStorage();
+      }
+
+      // -------------------------------------------------------------------
+      // 4. Rendering, Logging, and Summary (MODIFIED)
+      // -------------------------------------------------------------------
+      function renderRecords(list){
+        // Remove existing records and empty state
+        Array.from(recordsSection.querySelectorAll('.record-row')).forEach(n=>n.remove());
+
+        const rows = (list && Array.isArray(list)) ? list : [];
         
-        overlay.style.display = 'flex';
-    }
+        // Find or create the list container
+        let recordsList = recordsSection.querySelector('.records-list-container');
+        if (!recordsList) {
+            recordsList = document.createElement('div');
+            recordsList.className = 'records-list-container';
+            // Insert it after the header (which is the first child)
+            recordsSection.appendChild(recordsList);
+        }
+        recordsList.innerHTML = '';
 
-    function closeModal() {
-        overlay.style.display = 'none';
-        document.querySelector('#save-btn').textContent = 'Save Record';
-    }
 
-    async function saveHandler(e) {
-        e.preventDefault();
-
-        // No need to check URL here, as it is already defined
-
-        const mode = currentMode;
-        
-        // Validation checks
-        if (!dateInput.value || !accountSelect.value || !descInput.value.trim() || !amtInput.value) {
-            alert('Please fill in all fields.');
+        if (rows.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            // Custom message if filters are active, otherwise the standard startup message
+            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value || filterTo.value 
+                                    ? "No records found matching your current filters."
+                                    : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
+            recordsList.appendChild(emptyDiv); // Append to the list container
+            recalcFilteredSummary(rows);
             return;
         }
 
-        // Record data tayyar karna
+        rows.forEach(rec=>{
+          const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.id;
+          row.innerHTML = `
+            <div>${rec.date}</div>
+            <div>${rec.account}</div>
+            <div>${rec.desc}</div>
+            <div>${formatAmount(rec.amount,rec.sign)}</div>
+            <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
+          `;
+          row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.id));
+          row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.id));
+          recordsList.appendChild(row);
+        });
+        recalcFilteredSummary(rows);
+      }
+      
+      function renderLogs(){
+        // (Unchanged)
+        const logModalList = document.getElementById('activity-log-modal');
+        logModalList.innerHTML = '';
+        store.logs.forEach(entry=>{
+          const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
+          logModalList.appendChild(div);
+        });
+      }
+      
+      function addLog(entry){
+        // (Unchanged)
+        store.logs.unshift(entry);
+        if(store.logs.length>500) store.logs.length = 500;
+        renderLogs();
+        saveToStorage();
+      }
+
+      function recalcGrandTotal(){
+          let income = 0, loan = 0, expense = 0;
+          store.records.forEach(r=>{
+              if(r.account === 'Income') income += Number(r.amount || 0);
+              else if(r.account === 'Loan') loan += Number(r.amount || 0);
+              else if(r.account === 'Expense') expense += Number(r.amount || 0);
+          });
+          const grandBalance = (income + loan) - expense;
+          document.getElementById('current-balance').textContent = 'Rs ' + grandBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+
+      function recalcFilteredSummary(filteredRecords){
+        let income = 0, loan = 0, expense = 0;
+        const list = filteredRecords || []; 
+        list.forEach(r=>{
+          if(r.account === 'Income') income += Number(r.amount || 0);
+          else if(r.account === 'Loan') loan += Number(r.amount || 0);
+          else if(r.account === 'Expense') expense += Number(r.amount || 0);
+        });
+        document.getElementById('sum-income').textContent = 'Rs ' + income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('sum-loan').textContent = 'Rs ' + loan.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      
+      // -------------------------------------------------------------------
+      // 5. Filtering and Sorting Logic (Unchanged)
+      // -------------------------------------------------------------------
+      function getFilteredRecords(){
+        const q = (filterSearch.value || '').trim().toLowerCase();
+        const acc = filterAccount.value || 'All Accounts';
+        const from = filterFrom.value || '';
+        const to = filterTo.value || '';
+        
+        // 1. Filter
+        const filtered = store.records.filter(r=>{
+          const dateOk = (!from || r.date >= from) && (!to || r.date <= to);
+          const accOk = (acc === 'All Accounts') || (r.account === acc);
+          const text = (String(r.desc) + ' ' + String(r.amount)).toLowerCase();
+          const textOk = !q || text.includes(q);
+          return dateOk && accOk && textOk;
+        });
+
+        // 2. Sort the filtered list
+        return sortRecords(filtered);
+      }
+
+      function applyFilter(){
+        const filtered = getFilteredRecords();
+        renderRecords(filtered);
+      }
+      
+      function sortRecords(list) {
+          list.sort((a, b) => {
+              const key = currentSort.key;
+              const order = currentSort.order === 'asc' ? 1 : -1;
+              let valA, valB;
+
+              if (key === 'amount') {
+                  // Amount comparison needs the original sign, not the 'positive'/'negative' label.
+                  // Since all expenses are negative, we can use the 'amount' field and rely on date tiebreaker.
+                  // For simplicity in this UI, we just sort by absolute amount + date.
+                  valA = Number(a.amount);
+                  valB = Number(b.amount);
+                  if (valA !== valB) return (valA - valB) * order;
+                  
+                  // Tiebreaker: Sort by date if amounts are equal
+                  return (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) * (currentSort.order === 'asc' ? 1 : -1); 
+              } else if (key === 'date') {
+                  valA = a.date;
+                  valB = b.date;
+              } else if (key === 'account') {
+                  valA = a.account.toLowerCase();
+                  valB = b.account.toLowerCase();
+              } else {
+                  return 0;
+              }
+
+              if (valA < valB) return -1 * order;
+              if (valA > valB) return 1 * order;
+              return 0;
+          });
+          return list;
+      }
+      
+      function handleSortClick(key) {
+          if (currentSort.key === key) {
+              currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+          } else {
+              currentSort.key = key;
+              currentSort.order = 'desc';
+          }
+          Array.from(recordsHead.querySelectorAll('div')).forEach(h => {
+              h.removeAttribute('data-sort-order');
+          });
+          const activeHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
+          if (activeHeader) {
+              activeHeader.setAttribute('data-sort-order', currentSort.order);
+          }
+          saveToStorage();
+          applyFilter();
+      }
+      
+      function setQuickFilter(period){
+          const d = new Date();
+          let fromDate, toDate;
+          
+          if(period === 'today'){
+              fromDate = new Date(d);
+              toDate = new Date(d);
+          } else if(period === 'yesterday'){
+              d.setDate(d.getDate() - 1); 
+              fromDate = new Date(d);
+              toDate = new Date(d);
+          } else if(period === 'month'){
+              fromDate = new Date(d.getFullYear(), d.getMonth(), 1); 
+              toDate = new Date(d.getFullYear(), d.getMonth() + 1, 0); 
+          } else if(period === 'fiscal'){
+              const dates = getFiscalYearDates();
+              filterFrom.value = dates.from;
+              filterTo.value = dates.to;
+          }
+
+          if(fromDate && toDate){
+              filterFrom.value = isoFormat(fromDate);
+              filterTo.value = isoFormat(toDate);
+          } else if (period === 'clear') {
+              filterFrom.value = '';
+              filterTo.value = '';
+          }
+          
+          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+          if (period !== 'clear') {
+              quickFilterButtons[period].classList.add('active');
+          }
+          
+          applyFilter(); 
+      }
+      
+      // -------------------------------------------------------------------
+      // 6. CRUD Modal Actions (MODIFIED for Sheets)
+      // -------------------------------------------------------------------
+      function openAdd(kind){
+        overlay.classList.add('show'); overlay.dataset.mode = 'add'; overlay.dataset.editId = '';
+        title.textContent = `Add ${capitalize(kind)} Entry`;
+        accountSelect.value = capitalize(kind); 
+        accountSelect.disabled = true; 
+        saveBtn.className = 'btn-save ' + kind;
+        saveBtn.textContent = 'Save';
+        descInput.value = ''; 
+        amtInput.value = ''; 
+        dateInput.value = isoToday();
+      }
+      
+      function openEdit(id){
+        const rec = store.records.find(r=>r.id === id);
+        if(!rec) return;
+        
+        // WARNING: Simplified Edit Mode
+        alert(`🚨 Warning: Edit mode is currently simplified. This action will submit a NEW record instead of updating the existing one in the Sheet (ID: ${rec.id}).`);
+        
+        overlay.classList.add('show'); 
+        overlay.dataset.mode = 'add'; // Force to Add mode for simplicity
+        overlay.dataset.editId = '';
+
+        title.textContent = `Edit Record (Submitting as New)`;
+        accountSelect.value = rec.account; 
+        accountSelect.disabled = true; 
+        saveBtn.className = 'btn-save ' + rec.account.toLowerCase();
+        saveBtn.textContent = 'Submit as New';
+        descInput.value = rec.desc; amtInput.value = rec.amount; 
+        dateInput.value = rec.date;
+      }
+      
+      function closeModal(){ 
+        overlay.classList.remove('show'); 
+        overlay.dataset.mode=''; 
+        overlay.dataset.editId=''; 
+        accountSelect.disabled = false; 
+      }
+      
+      function closeDeleteModal() { deleteOverlay.classList.remove('show'); deleteConfirmBtn.dataset.id = ''; }
+
+      function closeResetModal() { resetOverlay.classList.remove('show'); } 
+
+      function openDeleteConfirm(id) {
+          const rec = store.records.find(r => r.id === id);
+          if (!rec) return;
+          
+          deleteConfirmBtn.dataset.id = id;
+          deleteRowIdEl.textContent = rec.id;
+          deleteDetailsDiv.innerHTML = `
+            <strong>Type:</strong> <span style="color: ${rec.account === 'Income' ? 'var(--success)' : rec.account === 'Loan' ? 'var(--warning)' : 'var(--danger)'};">${rec.account}</span><br>
+            <strong>Date:</strong> ${rec.date}<br>
+            <strong>Description:</strong> ${rec.desc}<br>
+            <strong>Amount:</strong> ${formatAmount(rec.amount, rec.sign)}
+          `;
+          deleteOverlay.classList.add('show');
+      }
+      
+      function confirmDelete(id) {
+          // This function is disabled, but kept for future Sheets API update integration
+          alert(`🚨 Deletion is not supported in this Sheets version. Please delete row ID ${id} manually in your Google Sheet.`);
+          addLog(`[${nowTsForLog()}] DELETION ATTEMPT: User attempted to delete record ID: ${id}`);
+          closeDeleteModal();
+      }
+
+      function openResetConfirm() { 
+          resetOverlay.classList.add('show');
+      }
+
+      function confirmReset() { 
+          // 1. Delete ONLY LOCAL keys (Logs, Theme, Sort)
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(SORT_KEY);
+          localStorage.removeItem(THEME_KEY);
+          
+          // 2. Clear in-memory state and reset sort order
+          store.records = []; // Clear records but they will be re-loaded from Sheets
+          store.logs = [];    
+          currentSort = { key: 'date', order: 'desc' }; 
+          
+          // 3. Force reload the app and fetch fresh data from Sheets
+          window.location.reload(); 
+      }
+
+      function validInputs(){
+        const desc = (descInput.value || '').trim();
+        const amt = Number(amtInput.value);
+        
+        if(!desc){ alert('Description is required.'); return false; }
+        if(isNaN(amt) || amt <= 0){ alert('Amount must be a positive number greater than 0.'); return false; }
+        if(!dateInput.value){ alert('Date is required.'); return false; }
+        
+        return true;
+      }
+
+      function getSignForAccount(account) {
+          // Returns API-compatible sign: '+' or '-'
+          if (account === 'Income') return '+';
+          if (account === 'Loan') return '+'; // Treat Loan as Income for simplicity in Sheet
+          return '-';
+      }
+
+      async function saveHandler(e){
+        e.preventDefault();
+        if(!validInputs()) return;
+        
+        const account = accountSelect.value; 
+        const desc = descInput.value.trim();
+        const amt = Number(amtInput.value);
+        const date = dateInput.value;
+        const sign = getSignForAccount(account); // API sign (+/-)
+        
+        // Record data tayyar karna (Local ID for logging only)
         const recordData = {
-            date: dateInput.value,
-            account: accountSelect.value,
-            desc: descInput.value.trim(),
-            amount: Number(amtInput.value),
-            sign: getSignForAccount(accountSelect.value),
-            id: mode === 'add' ? 'r' + Date.now() : overlay.dataset.editId 
+            date: date,
+            account: account,
+            desc: desc,
+            amount: amt,
+            sign: sign,
+            id: 'r' + Date.now() // New unique ID for the new row
         };
 
-        // WARNING for Edit Mode simplicity
-        if (mode === 'edit') {
-            // For the sake of simplicity, we are treating edits as a NEW record submission.
-            // A full implementation requires a more complex Apps Script (updateRowById).
-            alert('🚨 Warning: Edit mode is currently simplified. This action will submit a NEW record instead of updating the existing one in the Sheet.');
-            recordData.id = 'r' + Date.now(); // Ensure new ID for new row
-        }
-        
         gsStatusEl.textContent = 'Saving...';
         gsStatusEl.style.color = 'var(--warning)';
 
@@ -561,8 +1045,7 @@
             const data = await response.json();
 
             if (data.result === 'success') {
-                store.logs.unshift(`[${nowTsForLog()}] Record saved to Google Sheets (ID: ${recordData.id}).`);
-                saveToStorage(); // Log save karein
+                addLog(`[${nowTsForLog()}] Record saved to Google Sheets (Temp ID: ${recordData.id}).`);
                 closeModal();
                 
                 // Data save hone ke baad, dobara Sheets se data load karein taake list update ho jaye
@@ -570,241 +1053,164 @@
                 
             } else {
                 alert('🚨 Error saving data to Google Sheets: ' + data.message);
-                store.logs.unshift(`[${nowTsForLog()}] ERROR: Failed to save record to Sheets: ${data.message}`);
-                saveToStorage();
+                addLog(`[${nowTsForLog()}] ERROR: Failed to save record to Sheets: ${data.message}`);
             }
 
         } catch (error) {
             gsStatusEl.textContent = 'ERROR!';
             gsStatusEl.style.color = 'var(--danger)';
             alert('⚠️ Network Error: Could not connect to Google Sheets. Check API URL or Internet connection.');
-            store.logs.unshift(`[${nowTsForLog()}] ERROR: Network failure during save: ${error.message}`);
-            saveToStorage();
+            addLog(`[${nowTsForLog()}] ERROR: Network failure during save: ${error.message}`);
         }
-    }
-    
-    // Existing deleteHandler remains the same (but will not work as it needs Sheets API)
-    function deleteHandler(recordId) {
-        alert(`🚨 Deletion is not yet supported in this Google Sheets version. You must delete the row manually in the Google Sheet with ID: ${recordId}`);
-        store.logs.unshift(`[${nowTsForLog()}] DELETION NOT ALLOWED: User attempted to delete record ID: ${recordId}`);
-        saveToStorage();
-    }
-    
-    function getSignForAccount(accountName) {
-        const account = store.accounts[accountName];
-        if (account && account.type === 'asset') return '-';
-        if (account && account.type === 'income') return '+';
-        return '-';
-    }
+        saveToStorage(); // Save logs
+      }
+
+      // -------------------------------------------------------------------
+      // 7. Event Wiring and Initialization (Unchanged)
+      // -------------------------------------------------------------------
+      
+      filterFrom.value = isoToday();
+      filterTo.value = isoToday();
+      dateInput.value = isoToday();
+
+      document.querySelectorAll('.big-btn').forEach(b => b.addEventListener('click', ()=> openAdd(b.dataset.action)));
+      saveBtn.addEventListener('click', saveHandler);
+      cancelBtn.addEventListener('click', closeModal);
+      overlay.addEventListener('click', e => { if(e.target === overlay) closeModal(); });
+      document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeModal(); closeDeleteModal(); closeResetModal(); } });
+      
+      deleteCancelBtn.addEventListener('click', closeDeleteModal);
+      deleteConfirmBtn.addEventListener('click', (e) => confirmDelete(e.target.dataset.id)); // Button is disabled
+      deleteOverlay.addEventListener('click', e => { if(e.target === deleteOverlay) closeDeleteModal(); });
+
+      btnReset.addEventListener('click', openResetConfirm); 
+      resetCancelBtn.addEventListener('click', closeResetModal);
+      resetConfirmBtn.addEventListener('click', confirmReset);
+      resetOverlay.addEventListener('click', e => { if(e.target === resetOverlay) closeResetModal(); });
+      
+      quickFilterButtons.today.addEventListener('click', () => setQuickFilter('today'));
+      quickFilterButtons.yesterday.addEventListener('click', () => setQuickFilter('yesterday'));
+      quickFilterButtons.month.addEventListener('click', () => setQuickFilter('month'));
+      quickFilterButtons.fiscal.addEventListener('click', () => setQuickFilter('fiscal'));
+      
+      btnLog.addEventListener('click', ()=> { logOverlay.classList.add('show'); });
+      logClose.addEventListener('click', ()=> { logOverlay.classList.remove('show'); });
+      logOverlay.addEventListener('click', e => { if(e.target === logOverlay) logOverlay.classList.remove('show'); });
+      
+      [filterSearch, filterAccount].forEach(el => el.addEventListener('input', applyFilter));
+      [filterFrom, filterTo].forEach(el => el.addEventListener('input', () => {
+          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+          applyFilter();
+      }));
+      
+      recordsHead.querySelectorAll('div[data-sort-key]').forEach(header => {
+          header.addEventListener('click', (e) => handleSortClick(e.target.dataset.sortKey));
+      });
+
+      // Local Backup/Restore/Export functions are still available (they only save/load logs and settings)
+      btnBackup.addEventListener('click', backupData);
+      btnRestore.addEventListener('click', restorePrompt);
+      btnExport.addEventListener('click', exportCSV);
+      themeToggle.addEventListener('click', toggleTheme); 
 
 
-    // -------------------------------------------------------------------
-    // 5. Utility Functions (Rendering, Sorting, Filtering, etc.)
-    // -------------------------------------------------------------------
-    
-    function recalcGrandTotal() {
-        const total = store.records.reduce((sum, record) => {
-            const amount = Number(record.amount) || 0;
-            return record.sign === '+' ? sum + amount : sum - amount;
-        }, 0);
-        store.grandTotal = total;
-        
-        const totalText = new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: 'PKR', 
-            minimumFractionDigits: 0 
-        }).format(total);
-        
-        grandTotalEl.textContent = totalText;
-        grandTotalEl.style.color = total >= 0 ? 'var(--success)' : 'var(--danger)';
-    }
-    
-    function renderRecords(recordsToRender) {
-        if (recordsToRender.length === 0) {
-            recordsList.innerHTML = `<div style="text-align:center; padding: 20px;">No records found for this filter.</div>`;
-            return;
-        }
-
-        recordsList.innerHTML = recordsToRender.map(record => `
-            <div class="record" data-id="${record.id}">
-                <div class="record-col">${record.date}</div>
-                <div class="record-col">${record.account}</div>
-                <div class="record-col">${record.desc}</div>
-                <div class="record-col sign" data-sign="${record.sign}">${record.sign}${Number(record.amount).toLocaleString('en-US', { minimumFractionDigits: 0 })}</div>
-                <div class="record-col action">
-                    <button class="btn accent btn-small" onclick="openModal('edit', getRecordById('${record.id}'))" style="padding: 2px 5px; font-size: 0.75rem;">Edit</button>
-                    <button class="btn danger btn-small" onclick="deleteHandler('${record.id}')" style="padding: 2px 5px; font-size: 0.75rem;">Del</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function applyFilter() {
-        // ... (Existing sorting and filtering logic remains the same) ...
-        const filterKey = store.quickFilter;
-        const today = new Date();
-        let startDate;
-
-        switch(filterKey) {
-            case 'today':
-                startDate = new Date(today);
-                startDate.setHours(0, 0, 0, 0);
-                break;
-            case 'week':
-                startDate = new Date(today);
-                startDate.setDate(today.getDate() - 7);
-                startDate.setHours(0, 0, 0, 0);
-                break;
-            case 'month':
-                startDate = new Date(today);
-                startDate.setDate(today.getDate() - 30);
-                startDate.setHours(0, 0, 0, 0);
-                break;
-            case 'all':
-            default:
-                startDate = null; // show all
-        }
-
-        // Apply filtering
-        let filteredRecords = store.records.filter(record => {
-            if (startDate === null) return true;
-            const recordDate = new Date(record.date);
-            return recordDate >= startDate;
-        });
-
-        // Apply sorting
-        filteredRecords.sort((a, b) => {
-            const key = store.currentSort.key;
-            const order = store.currentSort.order;
-            let valA, valB;
-
-            if (key === 'amount') {
-                valA = Number(a.amount);
-                valB = Number(b.amount);
+      // -------------------------------------------------------------------
+      // 8. Backup/Restore/Export Functions (Unchanged, operate on local state/logs)
+      // -------------------------------------------------------------------
+      function backupData(){
+        try{
+          // NOTE: This only backs up the currently loaded records + logs, not the complete sheet
+          const dataStr = JSON.stringify(store, null, 2);
+          const blob = new Blob([dataStr], {type: 'application/json'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          a.href = url; a.download = `homeledger_backup_${ts}.json`;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+          addLog(`[${nowTsForLog()}] Backup created`);
+        }catch(e){ alert('Backup failed: ' + e.message); }
+      }
+      function restorePrompt(){
+        restoreFileInput.value = '';
+        restoreFileInput.click();
+      }
+      restoreFileInput.addEventListener('change', function(e){
+        const file = e.target.files && e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev){
+          try{
+            const parsed = JSON.parse(ev.target.result);
+            if(parsed && parsed.records){
+                // For simplicity, we only merge logs and settings, and re-fetch records from Sheets.
+                // NOTE: This does NOT upload records to Google Sheets.
+                store.logs = parsed.logs || store.logs;
+                saveToStorage();
+                
+                // Force reload of records from Sheets after restoring local settings
+                loadDataFromSheets(); 
+                
+                addLog(`[${nowTsForLog()}] Restored local settings (logs/theme/sort) from file: ${file.name}. Records reloaded from Sheets.`);
+                alert('Restore completed. Filter has been reset to "Today".');
             } else {
-                valA = a[key];
-                valB = b[key];
+              alert('Invalid backup file.');
             }
-
-            if (valA < valB) return order === 'asc' ? -1 : 1;
-            if (valA > valB) return order === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        // Update active filter button
-        document.querySelectorAll('.btn.filter').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.querySelector(`.btn.filter[data-filter="${filterKey}"]`);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        renderRecords(filteredRecords);
-    }
-
-    function setQuickFilter(filterKey) {
-        store.quickFilter = filterKey;
-        saveToStorage();
-        applyFilter();
-    }
-    
-    function sortHandler(e) {
-        const sortKey = e.target.dataset.sortKey;
-        if (!sortKey) return;
-
-        let order = 'asc';
-        if (store.currentSort.key === sortKey) {
-            order = store.currentSort.order === 'asc' ? 'desc' : 'asc';
-        }
-
-        // Clear existing sort indicators
-        recordsHead.querySelectorAll('div[data-sort-order]').forEach(div => div.removeAttribute('data-sort-order'));
-        
-        // Set new indicator
-        e.target.setAttribute('data-sort-order', order);
-
-        store.currentSort = { key: sortKey, order: order };
-        saveToStorage();
-        applyFilter();
-    }
-    
-    function getRecordById(id) {
-        return store.records.find(r => r.id === id);
-    }
-    
-    // Logs functions (unchanged)
-    function renderLogs() {
-        const logsContent = document.querySelector('#logs-content');
-        if (logsContent) {
-            logsContent.innerHTML = store.logs.map(log => `<div class="log-entry">${log}</div>`).join('');
-        }
-    }
-
-    function openLogsModal() {
-        renderLogs();
-        logsOverlay.style.display = 'flex';
-    }
-
-    function closeLogsModal() {
-        logsOverlay.style.display = 'none';
-    }
-
-    // Theme toggle (unchanged)
-    function applyTheme(theme) {
-        document.body.setAttribute('data-theme', theme);
-        localStorage.setItem(THEME_KEY, theme);
-    }
-
-    // -------------------------------------------------------------------
-    // 6. Event Listeners
-    // -------------------------------------------------------------------
-    document.querySelector('#add-record-btn').addEventListener('click', () => openModal('add'));
-    document.querySelector('#cancel-btn').addEventListener('click', closeModal);
-    document.querySelector('#logs-btn').addEventListener('click', openLogsModal);
-    document.querySelector('#close-logs-btn').addEventListener('click', closeLogsModal);
-    document.querySelector('#theme-toggle').addEventListener('click', () => {
-        const currentTheme = document.body.getAttribute('data-theme') || 'dark';
-        const newTheme = currentTheme === 'dark' ? 'light' : (currentTheme === 'light' ? 'terminal' : 'dark');
-        applyTheme(newTheme);
-        store.logs.unshift(`[${nowTsForLog()}] Theme set to ${newTheme}.`);
-        saveToStorage();
-    });
-    
-    form.addEventListener('submit', saveHandler);
-    recordsHead.addEventListener('click', sortHandler);
-    quickFilters.addEventListener('click', (e) => {
-        if (e.target.classList.contains('filter')) {
-            setQuickFilter(e.target.dataset.filter);
-        }
-    });
+          }catch(err){
+            alert('Failed to restore: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+      function exportCSV(){
+        try{
+          const rows = [['date','account','description','amount','sign','id']];
+          getFilteredRecords().forEach(r => rows.push([r.date, r.account, r.desc, r.amount, r.sign, r.id]));
+          const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+          const blob = new Blob([csv], {type: 'text/csv'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          a.href = url; a.download = `homeledger_export_${ts}.csv`;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+          addLog(`[${nowTsForLog()}] Exported CSV`);
+        }catch(e){ alert('Export failed: ' + e.message); }
+      }
 
 
-    // -------------------------------------------------------------------
-    // 7. Initial Load (UPDATED TO LOAD FROM SHEETS)
-    // -------------------------------------------------------------------
-    loadFromStorage(); // Pehle settings aur logs load kar len
-    loadDataFromSheets(); // Ab Records Google Sheets se load honge
+      // -------------------------------------------------------------------
+      // 9. Initial Load (MODIFIED)
+      // -------------------------------------------------------------------
+      loadFromStorage();
 
-    if (store.logs.length === 0){
+      if(store.logs.length === 0){
         store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
-    }
+      }
 
-    const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-    applyTheme(savedTheme);
-    
-    const initialHeader = recordsHead.querySelector(`div[data-sort-key="${store.currentSort.key}"]`);
-    if (initialHeader) {
-        initialHeader.setAttribute('data-sort-order', store.currentSort.order);
-    }
-    
-    // setQuickFilter(store.quickFilter); // loadDataFromSheets ke andar applyFilter() call ho raha hai
+      const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+      applyTheme(savedTheme);
+      
+      const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+      if (initialHeader) {
+          initialHeader.setAttribute('data-sort-order', currentSort.order);
+      }
+      
+      // Load records from Google Sheets (This also calls applyFilter and recalcTotal)
+      loadDataFromSheets(); 
 
-    renderLogs();
-    recalcGrandTotal(); 
+      // Apply initial quick filter based on loaded setting
+      // The applyFilter is called inside loadDataFromSheets, so we just set the filter on load
+      setQuickFilter('today'); 
 
-    window._homeledger = {
-        store: store,
-        saveToStorage: saveToStorage,
-        recalcGrandTotal: recalcGrandTotal,
-        loadDataFromSheets: loadDataFromSheets
-    };
+      renderLogs();
+      recalcGrandTotal(); 
+      // applyFilter(); // Already called in loadDataFromSheets
+
+      window._homeledger = {
+        store, saveToStorage, loadFromStorage, recalcGrandTotal, recalcFilteredSummary, applyFilter
+      };
+    })();
   </script>
 </body>
 </html>
