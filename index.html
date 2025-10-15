@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HomeLedger v1.4.9</title>
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/manifest.json"> 
   <style>
     /* ------------------------------------------------------------------- */
     /* 1. CSS Variables and Theme Setup */
@@ -492,8 +492,8 @@
       // 0. GOOGLE SHEETS API SETUP (NEW)
       // -------------------------------------------------------------------
       // YOUR DEPLOYMENT ID AND URL
-      const API_URL = 'https://script.google.com/macros/s/AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS/exec';
       const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS';
+      const API_URL = 'https://script.google.com/macros/s/' + DEPLOYMENT_ID + '/exec';
       
       let IS_ONLINE = navigator.onLine; // Initial online status
       let SYNC_STATUS = 'Disconnected';
@@ -580,7 +580,6 @@
           return { from: isoFormat(fromDate), to: isoFormat(toDate) };
       }
       
-      // *** FIX: seedSampleData function now returns an empty array ***
       function seedSampleData() {
           return []; // Returns an empty array to ensure no data is ever seeded automatically
       }
@@ -622,7 +621,8 @@
               const msg = `Could not connect to Google Sheets. Check API URL or Internet connection.`;
               updateSyncStatus('Error: Check Console', 'var(--danger)');
               console.error('Fetch from Sheets Error:', error);
-              alert('⚠️ Network Error: ' + msg);
+              // ALERT is the cause of the user's issue. The user needs to see this on load
+              alert('⚠️ Network Error: ' + msg); 
               addLog(`[${nowTsForLog()}] ERROR: Sheets fetch failed. ${error.message || msg}`);
               return { records: [] };
           }
@@ -856,6 +856,9 @@
 
               if (valA < valB) return -1 * order;
               if (valA > valB) return 1 * order;
+              // Secondary sort by ID to ensure stable sort order
+              if (a.id < b.id) return -1 * order;
+              if (a.id > b.id) return 1 * order;
               return 0;
           });
           return list;
@@ -993,6 +996,7 @@
           resetOverlay.classList.add('show');
       }
 
+      // NOTE: This does NOT delete data from Sheets, only local storage for safety/simplicity
       function confirmReset() { 
           // 1. Delete ALL keys related to the app from LocalStorage
           localStorage.removeItem(STORAGE_KEY);
@@ -1042,13 +1046,21 @@
         let sheetResult = { status: 'error' };
 
         if(mode === 'add'){
-          const id = 'r' + Date.now();
+          // Use a temporary unique ID for local storage/internal use, Sheets API will assign a final ID/Row
+          const id = 'r' + Date.now(); 
           rec = { id, date, account, desc, amount: amt, sign };
           
           // 1. Send to Sheets first (asynchronously)
           sheetResult = await updateSheetRecord(rec, 'add'); 
           
           if (sheetResult.status === 'success') {
+              // The Sheets script returns the assigned row ID in the 'id' field if it's the first time saving.
+              // To handle cases where we are adding and the sheet might send back its row reference,
+              // we can re-map the local record's ID to the one returned from the Sheet.
+              // However, since we are using the internal ID 'r'+Date.now() for unique identification 
+              // for a hybrid app, we must ensure Sheets API returns the correct ID or we use the initial ID.
+              // For simplicity, we use the initial local ID and trust the Sheets API handles its own indexing.
+              
               store.records.unshift(rec); // 2. Add to local storage only if Sheets successful
               addLog(`[${nowTsForLog()}] Added ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
           } else {
@@ -1063,7 +1075,8 @@
             const before = `${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`;
             
             // Create an updated object for Sheets
-            const updatedRec = { id, date, account, desc, amount: amt, sign };
+            // The Sheets API will use the existing 'id' to find and update the record
+            const updatedRec = { id, date, account, description: desc, amount: amt, sign }; 
 
             // 1. Send Update to Sheets (asynchronously)
             sheetResult = await updateSheetRecord(updatedRec, 'edit'); 
@@ -1236,20 +1249,19 @@
               if (sheetData.records.length > 0) {
                   // Overwrite local records with Sheets data, and map column names
                   store.records = sheetData.records.map(r => ({
-                      // Note: We assume the Sheets column 'id' is a unique row identifier
-                      id: r.id || ('r' + Date.now() + Math.random()), 
+                      // IMPORTANT: The Sheets script must return a unique ID/Row reference in 'id'
+                      id: r.id, 
                       date: r.date,
                       account: r.account,
                       desc: r.description, // Sheet column name is 'description', local is 'desc'
                       amount: Number(r.amount),
                       sign: getSignForAccount(r.account),
                   }));
-                  updateSyncStatus('Synced', 'var(--success)');
-              } else {
-                  // Sheets has no data, or fetch failed gracefully. Keep local store data.
-                  if (SYNC_STATUS === 'Synced') {
-                      updateSyncStatus('Synced (Empty Sheet)', 'var(--success)');
-                  }
+                  // Save the newly loaded Sheets data to local storage
+                  saveToStorage(); 
+              } else if (sheetData.status !== 'error') {
+                  // If Sheets has no data but no fetch error occurred, we trust local storage
+                  updateSyncStatus('Local Data Loaded', 'var(--accent)');
               }
           }
           
