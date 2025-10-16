@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HomeLedger v1.4.9</title>
+
+  <link rel="manifest" href="/manifest.json">
   <style>
     /* ------------------------------------------------------------------- */
     /* 1. CSS Variables and Theme Setup */
@@ -1085,6 +1087,18 @@
       recalcGrandTotal(); 
       applyFilter(); 
 
+      // PWA: Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  });
+}
+
       window._homeledger = {
         store, saveToStorage, loadFromStorage, recalcGrandTotal, recalcFilteredSummary, applyFilter
       };
@@ -1092,3 +1106,4 @@
   </script>
 </body>
 </html>
+
