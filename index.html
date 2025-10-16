@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HomeLedger v1.4.9</title>
-  <link rel="manifest" href="/manifest.json"> 
   <style>
     /* ------------------------------------------------------------------- */
     /* 1. CSS Variables and Theme Setup */
@@ -333,7 +332,6 @@
   <div class="wrap" id="app">
     <div class="topbar">
       <div class="brand">HomeLedger</div>
-      <div id="sync-status" style="font-size:12px; font-weight:700;">Status: Loading...</div>
       <div class="controls">
         <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
         <details class="menu">
@@ -489,16 +487,6 @@
   <script>
     (function(){
       // -------------------------------------------------------------------
-      // 0. GOOGLE SHEETS API SETUP (NEW)
-      // -------------------------------------------------------------------
-      // YOUR DEPLOYMENT ID AND URL
-      const DEPLOYMENT_ID = 'AKfycbyqT9-ZKHkdbQHcP0Uro5PqgffKlgeGhapRRgn7MgA3i0QgZTipoVxBYqY9NiIHc_LS';
-      const API_URL = 'https://script.google.com/macros/s/' + DEPLOYMENT_ID + '/exec';
-      
-      let IS_ONLINE = navigator.onLine; // Initial online status
-      let SYNC_STATUS = 'Disconnected';
-      let IS_SYNCING = false;
-      // -------------------------------------------------------------------
       // 1. DOM References and Constants
       // -------------------------------------------------------------------
       const overlay = document.getElementById('modal-overlay');
@@ -580,108 +568,12 @@
           return { from: isoFormat(fromDate), to: isoFormat(toDate) };
       }
       
+      // *** FIX: seedSampleData function now returns an empty array ***
       function seedSampleData() {
           return []; // Returns an empty array to ensure no data is ever seeded automatically
       }
       // -------------------------------------------------------------------
-      // 3. GOOGLE SHEETS API COMMUNICATION (NEW)
-      // -------------------------------------------------------------------
-      function updateSyncStatus(status, color = 'var(--text-color)', sync = false) {
-          SYNC_STATUS = status;
-          const statusDiv = document.getElementById('sync-status');
-          if (statusDiv) {
-              statusDiv.textContent = 'Status: ' + status;
-              statusDiv.style.color = color;
-              IS_SYNCING = sync;
-              statusDiv.style.fontWeight = sync ? '800' : '700';
-          }
-      }
-
-      async function fetchDataFromSheets() {
-          if (!IS_ONLINE) {
-              updateSyncStatus('Offline', 'var(--warning)');
-              return { records: [] };
-          }
-          updateSyncStatus('Fetching...', 'var(--accent)', true);
-          addLog(`[${nowTsForLog()}] Attempting to fetch data from Google Sheets...`);
-          
-          try {
-              const response = await fetch(API_URL + '?action=getRecords');
-              const data = await response.json();
-              
-              if (data.status === 'success') {
-                  updateSyncStatus('Synced', 'var(--success)');
-                  addLog(`[${nowTsForLog()}] Successfully fetched ${data.records.length} records from Sheets.`);
-                  return data;
-              } else {
-                  // This happens if the Sheets API call fails on the server side (e.g., no records, or error in script)
-                  throw new Error(data.message || 'Sheets API returned an error.');
-              }
-          } catch (error) {
-              const msg = `Could not connect to Google Sheets. Check API URL or Internet connection.`;
-              updateSyncStatus('Error: Check Console', 'var(--danger)');
-              console.error('Fetch from Sheets Error:', error);
-              // ALERT is the cause of the user's issue. The user needs to see this on load
-              alert('⚠️ Network Error: ' + msg); 
-              addLog(`[${nowTsForLog()}] ERROR: Sheets fetch failed. ${error.message || msg}`);
-              return { records: [] };
-          }
-      }
-
-      async function sendToSheets(record, action) {
-          if (!IS_ONLINE) {
-              updateSyncStatus('Offline Access: Failed to reach API.', 'var(--warning)');
-              alert(`⚠️ Error saving data to Google Sheets: Offline access: Failed to reach Google Sheets API.`);
-              return { status: 'error', message: 'Offline' };
-          }
-          
-          updateSyncStatus('Saving...', 'var(--accent)', true);
-          
-          const payload = { 
-              action: action, 
-              record: record 
-          };
-          
-          try {
-              const response = await fetch(API_URL, {
-                  method: 'POST',
-                  body: JSON.stringify(payload),
-              });
-
-              // The GAS script always returns JSON, even on error.
-              const data = await response.json();
-
-              if (data.status === 'success') {
-                  updateSyncStatus('Synced', 'var(--success)');
-                  addLog(`[${nowTsForLog()}] Sheets ${action} success: ${data.message || 'Record saved.'}`);
-                  return data;
-              } else {
-                  // Sheets script returned an error status
-                  throw new Error(data.message || `Sheets API ${action} failed.`);
-              }
-          } catch (error) {
-              updateSyncStatus('Error: Save Failed', 'var(--danger)');
-              console.error('Sheets Send Error:', error);
-              alert(`⚠️ Error saving data to Google Sheets: ${error.message || 'Check console for details.'}`);
-              addLog(`[${nowTsForLog()}] ERROR: Sheets ${action} failed. ${error.message || 'Network issue or API error.'}`);
-              return { status: 'error', message: error.message || 'Network issue or API error' };
-          }
-      }
-
-      function deleteSheetRecord(id) {
-          return sendToSheets({ id }, 'deleteRecord');
-      }
-
-      function updateSheetRecord(record, mode) {
-          if (mode === 'add') {
-              return sendToSheets(record, 'addRecord');
-          } else if (mode === 'edit') {
-              return sendToSheets(record, 'editRecord');
-          }
-      }
-
-      // -------------------------------------------------------------------
-      // 4. Persistence & Theme
+      // 3. Persistence & Theme
       // -------------------------------------------------------------------
       function saveToStorage(){
         try{ 
@@ -732,7 +624,7 @@
       }
 
       // -------------------------------------------------------------------
-      // 5. Rendering, Logging, and Summary
+      // 4. Rendering, Logging, and Summary
       // -------------------------------------------------------------------
       function renderRecords(list){
         Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
@@ -807,7 +699,7 @@
       }
       
       // -------------------------------------------------------------------
-      // 6. Filtering and Sorting Logic
+      // 5. Filtering and Sorting Logic
       // -------------------------------------------------------------------
       function getFilteredRecords(){
         const q = (filterSearch.value || '').trim().toLowerCase();
@@ -840,7 +732,6 @@
               let valA, valB;
 
               if (key === 'amount') {
-                  // Amount sorting must handle both positive/negative (Income/Expense/Loan)
                   valA = a.sign === 'positive' ? Number(a.amount) : -Number(a.amount);
                   valB = b.sign === 'positive' ? Number(b.amount) : -Number(b.amount);
                   return (valA - valB) * order;
@@ -856,9 +747,6 @@
 
               if (valA < valB) return -1 * order;
               if (valA > valB) return 1 * order;
-              // Secondary sort by ID to ensure stable sort order
-              if (a.id < b.id) return -1 * order;
-              if (a.id > b.id) return 1 * order;
               return 0;
           });
           return list;
@@ -919,7 +807,7 @@
       }
       
       // -------------------------------------------------------------------
-      // 7. CRUD Modal Actions (MODIFIED FOR SHEETS API)
+      // 6. CRUD Modal Actions 
       // -------------------------------------------------------------------
       function openAdd(kind){
         overlay.classList.add('show'); overlay.dataset.mode = 'add'; overlay.dataset.editId = '';
@@ -971,19 +859,10 @@
           deleteOverlay.classList.add('show');
       }
       
-      async function confirmDelete(id) { // MODIFIED TO BE ASYNC
+      function confirmDelete(id) {
           const rec = store.records.find(r=>r.id === id);
           if(!rec) return;
           
-          // 1. Delete from Sheets first
-          const sheetResult = await deleteSheetRecord(id); 
-          
-          if (sheetResult.status !== 'success') {
-              // If deletion from Sheets failed, show error and stop.
-              return; 
-          }
-
-          // 2. Delete from local storage only if Sheets was successful
           store.records = store.records.filter(r=>r.id !== id);
           addLog(`[${nowTsForLog()}] Deleted ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
           saveToStorage();
@@ -996,7 +875,6 @@
           resetOverlay.classList.add('show');
       }
 
-      // NOTE: This does NOT delete data from Sheets, only local storage for safety/simplicity
       function confirmReset() { 
           // 1. Delete ALL keys related to the app from LocalStorage
           localStorage.removeItem(STORAGE_KEY);
@@ -1033,7 +911,7 @@
           return 'negative';
       }
 
-      async function saveHandler(){ // MODIFIED TO BE ASYNC
+      function saveHandler(){
         if(!validInputs()) return;
         const mode = overlay.dataset.mode;
         const account = accountSelect.value; 
@@ -1041,72 +919,32 @@
         const amt = Number(amtInput.value);
         const date = dateInput.value;
         const sign = getSignForAccount(account);
-        
-        let rec;
-        let sheetResult = { status: 'error' };
 
         if(mode === 'add'){
-          // Use a temporary unique ID for local storage/internal use, Sheets API will assign a final ID/Row
-          const id = 'r' + Date.now(); 
-          rec = { id, date, account, desc, amount: amt, sign };
-          
-          // 1. Send to Sheets first (asynchronously)
-          sheetResult = await updateSheetRecord(rec, 'add'); 
-          
-          if (sheetResult.status === 'success') {
-              // The Sheets script returns the assigned row ID in the 'id' field if it's the first time saving.
-              // To handle cases where we are adding and the sheet might send back its row reference,
-              // we can re-map the local record's ID to the one returned from the Sheet.
-              // However, since we are using the internal ID 'r'+Date.now() for unique identification 
-              // for a hybrid app, we must ensure Sheets API returns the correct ID or we use the initial ID.
-              // For simplicity, we use the initial local ID and trust the Sheets API handles its own indexing.
-              
-              store.records.unshift(rec); // 2. Add to local storage only if Sheets successful
-              addLog(`[${nowTsForLog()}] Added ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
-          } else {
-              // If Sheets failed, prevent closing the modal, show error and let user retry/fix connection
-              return;
-          }
-          
+          const id = 'r' + Date.now();
+          const rec = { id, date, account, desc, amount: amt, sign };
+          store.records.unshift(rec);
+          addLog(`[${nowTsForLog()}] Added ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
         } else if(mode === 'edit'){
           const id = overlay.dataset.editId;
-          rec = store.records.find(r=>r.id === id);
+          const rec = store.records.find(r=>r.id === id);
           if(rec){
             const before = `${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`;
-            
-            // Create an updated object for Sheets
-            // The Sheets API will use the existing 'id' to find and update the record
-            const updatedRec = { id, date, account, description: desc, amount: amt, sign }; 
-
-            // 1. Send Update to Sheets (asynchronously)
-            sheetResult = await updateSheetRecord(updatedRec, 'edit'); 
-            
-            if (sheetResult.status === 'success') {
-                // 2. Update local store only if Sheets successful
-                rec.date = date; 
-                rec.desc = desc; 
-                rec.amount = amt; 
-                rec.sign = sign; 
-                addLog(`[${nowTsForLog()}] Edited ${rec.account} entry (${rec.id}): ${before} → ${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
-            } else {
-                // If Sheets failed, prevent closing the modal
-                return;
-            }
-          } else {
-              // Record not found in local store, proceed as if error
-              return;
+            rec.date = date; 
+            rec.desc = desc; 
+            rec.amount = amt; 
+            rec.sign = sign; 
+            addLog(`[${nowTsForLog()}] Edited ${rec.account} entry (${rec.id}): ${before} → ${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
           }
         }
-        
-        // Close modal and refresh UI only on success
         closeModal();
-        saveToStorage(); // Save to local storage after Sheets success
+        saveToStorage();
         recalcGrandTotal(); 
         applyFilter(); 
       }
 
       // -------------------------------------------------------------------
-      // 8. Event Wiring and Initialization
+      // 7. Event Wiring and Initialization
       // -------------------------------------------------------------------
       
       filterFrom.value = isoToday();
@@ -1154,7 +992,7 @@
 
 
       // -------------------------------------------------------------------
-      // 9. Backup/Restore/Export Functions
+      // 8. Backup/Restore/Export Functions
       // -------------------------------------------------------------------
       function backupData(){
         try{
@@ -1215,85 +1053,41 @@
 
 
       // -------------------------------------------------------------------
-      // 10. Initial Load & Service Worker Registration
+      // 9. Initial Load
       // -------------------------------------------------------------------
+      loadFromStorage();
+
+      // **FIX:** The logic for seeding data is now changed to simply rely on the empty seedSampleData()
+      if(store.records.length === 0){
+        store.records = seedSampleData(); // This now returns []
+      }
+      // If records are still empty, but the STORAGE_KEY was not found, we save the empty state.
+      if(store.records.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
+        saveToStorage(); // Save the empty state so it doesn't try to load seed data on next run (just a safeguard)
+      }
+
+
+      if(store.logs.length === 0){
+        store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
+      }
+
+      const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+      applyTheme(savedTheme);
       
-      function checkNetworkStatus() {
-          IS_ONLINE = navigator.onLine;
-          if (!IS_ONLINE) {
-              updateSyncStatus('Offline', 'var(--warning)');
-              addLog(`[${nowTsForLog()}] Device went offline.`);
-          } else {
-              // If we came back online, attempt to sync/fetch if we were disconnected
-              if (SYNC_STATUS === 'Offline' || SYNC_STATUS.startsWith('Error')) {
-                  loadAllData(); // Re-fetch on reconnect
-              } else if(SYNC_STATUS === 'Disconnected') {
-                  loadAllData(); // Initial load if not done yet
-              }
-          }
+      const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+      if (initialHeader) {
+          initialHeader.setAttribute('data-sort-order', currentSort.order);
       }
-      window.addEventListener('online', checkNetworkStatus);
-      window.addEventListener('offline', checkNetworkStatus);
-
-
-      async function loadAllData() {
-          // 1. Check network
-          checkNetworkStatus();
-          
-          // 2. Load from Local Storage
-          loadFromStorage(); 
-          
-          // 3. Try to fetch from Sheets
-          if (IS_ONLINE) {
-              const sheetData = await fetchDataFromSheets();
-              if (sheetData.records.length > 0) {
-                  // Overwrite local records with Sheets data, and map column names
-                  store.records = sheetData.records.map(r => ({
-                      // IMPORTANT: The Sheets script must return a unique ID/Row reference in 'id'
-                      id: r.id, 
-                      date: r.date,
-                      account: r.account,
-                      desc: r.description, // Sheet column name is 'description', local is 'desc'
-                      amount: Number(r.amount),
-                      sign: getSignForAccount(r.account),
-                  }));
-                  // Save the newly loaded Sheets data to local storage
-                  saveToStorage(); 
-              } else if (sheetData.status !== 'error') {
-                  // If Sheets has no data but no fetch error occurred, we trust local storage
-                  updateSyncStatus('Local Data Loaded', 'var(--accent)');
-              }
-          }
-          
-          // 4. Final render
-          const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-          applyTheme(savedTheme);
-          
-          const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
-          if (initialHeader) {
-              initialHeader.setAttribute('data-sort-order', currentSort.order);
-          }
-          
-          if(store.logs.length === 0){
-              store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
-          }
-
-          setQuickFilter('today'); 
-          renderLogs();
-          recalcGrandTotal(); 
-          applyFilter();
-      }
-
-      // Initial Call
-      loadAllData();
       
-      // Register Service Worker for PWA/Offline access
-      if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('/sw.js')
-              .then(reg => console.log('Service Worker registered.', reg))
-              .catch(err => console.error('Service Worker registration failed: ', err));
-      }
+      setQuickFilter('today'); 
 
+      renderLogs();
+      recalcGrandTotal(); 
+      applyFilter(); 
+
+      window._homeledger = {
+        store, saveToStorage, loadFromStorage, recalcGrandTotal, recalcFilteredSummary, applyFilter
+      };
     })();
   </script>
 </body>
