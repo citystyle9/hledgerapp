@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HomeLedger v1.4.9</title>
   
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/hledgerapp/manifest.json" /> 
   
   <style>
     /* ------------------------------------------------------------------- */
@@ -537,7 +537,6 @@
       const VERSION_TAG = 'HomeLedger v1.4.9'; 
       let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
-      let currentEditId = null;
 
       // -------------------------------------------------------------------
       // 2. Helper Functions
@@ -558,19 +557,6 @@
         const d = new Date();
         return isoFormat(d);
       }
-      function isoYesterday(){
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        return isoFormat(d);
-      }
-      function isoCurrentMonthStart(){
-        const d = new Date();
-        return isoFormat(new Date(d.getFullYear(), d.getMonth(), 1));
-      }
-      function isoCurrentMonthEnd(){
-        const d = new Date();
-        return isoFormat(new Date(d.getFullYear(), d.getMonth() + 1, 0));
-      }
       function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
       
       function getFiscalYearDates(){
@@ -578,7 +564,6 @@
           const year = d.getFullYear();
           const month = d.getMonth(); 
           let startYear, endYear;
-          // Fiscal year runs from July 1 to June 30
           if (month >= 6) { startYear = year; endYear = year + 1; } 
           else { startYear = year - 1; endYear = year; }
           const fromDate = new Date(startYear, 6, 1); 
@@ -586,9 +571,9 @@
           return { from: isoFormat(fromDate), to: isoFormat(toDate) };
       }
       
-      // FIX: seedSampleData function now returns an empty array to ensure no data is ever seeded automatically
+      // *** FIX: seedSampleData function now returns an empty array ***
       function seedSampleData() {
-          return [];
+          return []; // Returns an empty array to ensure no data is ever seeded automatically
       }
       // -------------------------------------------------------------------
       // 3. Persistence & Theme
@@ -597,14 +582,14 @@
         try{ 
             // Only save the main storage key if there are records or logs.
             if (store.records.length > 0 || store.logs.length > 0) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+                 localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
             } else {
-                // FIX: Ensure the STORAGE_KEY is explicitly removed if records are empty
-                localStorage.removeItem(STORAGE_KEY);
+                 // **FIX:** Ensure the STORAGE_KEY is explicitly removed if records are empty
+                 localStorage.removeItem(STORAGE_KEY);
             }
             // Save settings keys regardless
             localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
-        }catch(e){ console.error("Saving failed:", e); }
+        }catch(e){}
       }
       function loadFromStorage(){
         try{
@@ -617,7 +602,7 @@
           const rawSort = localStorage.getItem(SORT_KEY);
           if(rawSort) currentSort = JSON.parse(rawSort);
 
-        }catch(e){ console.error("Loading failed:", e); }
+        }catch(e){}
       }
       
       function applyTheme(theme){
@@ -652,10 +637,9 @@
             const emptyDiv = document.createElement('div');
             emptyDiv.className = 'empty-state';
             // Custom message if filters are active, otherwise the standard startup message
-            const isFilterActive = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value || filterTo.value;
-            emptyDiv.textContent = isFilterActive
-                                      ? "No records found matching your current filters."
-                                      : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
+            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
+                                    ? "No records found matching your current filters."
+                                    : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
             recordsSection.appendChild(emptyDiv);
             recalcFilteredSummary(rows);
             return;
@@ -663,12 +647,11 @@
 
         rows.forEach(rec=>{
           const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.id;
-          const sign = (rec.account === 'Income' || rec.account === 'Loan') ? 'positive' : 'negative';
           row.innerHTML = `
             <div>${rec.date}</div>
             <div>${rec.account}</div>
             <div>${rec.desc}</div>
-            <div style="color:var(--${rec.account.toLowerCase()})">${formatAmount(rec.amount,sign)}</div>
+            <div>${formatAmount(rec.amount,rec.sign)}</div>
             <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
           `;
           row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.id));
@@ -729,7 +712,6 @@
         
         // 1. Filter
         const filtered = store.records.filter(r=>{
-          // FIX: Compare dates as strings; if only one is set, use it.
           const dateOk = (!from || r.date >= from) && (!to || r.date <= to);
           const accOk = (acc === 'All Accounts') || (r.account === acc);
           const text = (String(r.desc) + ' ' + String(r.amount)).toLowerCase();
@@ -753,12 +735,10 @@
               let valA, valB;
 
               if (key === 'amount') {
-                  // Sort by absolute amount, but Expense/Income signs are considered for balance calc
-                  valA = Number(a.amount);
-                  valB = Number(b.amount);
+                  valA = a.sign === 'positive' ? Number(a.amount) : -Number(a.amount);
+                  valB = b.sign === 'positive' ? Number(b.amount) : -Number(b.amount);
                   return (valA - valB) * order;
               } else if (key === 'date') {
-                  // Sort by date string (YYYY-MM-DD)
                   valA = a.date;
                   valB = b.date;
               } else if (key === 'account') {
@@ -770,374 +750,317 @@
 
               if (valA < valB) return -1 * order;
               if (valA > valB) return 1 * order;
-              
-              // Secondary sort by date (desc) to keep order consistent if primary key is same
-              return (a.date < b.date ? 1 : -1); 
+              return 0;
           });
           return list;
       }
       
       function handleSortClick(key) {
-          if (key === 'action') return; // Cannot sort by action
-          
           if (currentSort.key === key) {
               currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
           } else {
               currentSort.key = key;
-              currentSort.order = (key === 'date' || key === 'amount') ? 'desc' : 'asc'; // Date and Amount default to desc
+              currentSort.order = 'desc';
           }
-          
-          // Update header indicators
           Array.from(recordsHead.querySelectorAll('div')).forEach(h => {
               h.removeAttribute('data-sort-order');
           });
-          const activeHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+          const activeHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
           if (activeHeader) {
               activeHeader.setAttribute('data-sort-order', currentSort.order);
           }
-          
-          saveToStorage(); // Save new sort state
-          applyFilter(); // Re-render records
-      }
-      
-      function setQuickFilter(type) {
-          const today = isoToday();
-          let from = today, to = today;
-          
-          // Reset all active classes
-          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
-
-          if (type === 'yesterday') {
-              from = to = isoYesterday();
-          } else if (type === 'month') {
-              from = isoCurrentMonthStart();
-              to = isoCurrentMonthEnd();
-          } else if (type === 'fiscal') {
-              const dates = getFiscalYearDates();
-              from = dates.from;
-              to = dates.to;
-          } else if (type === 'today') {
-              // Default to today
-          } else {
-              // No quick filter selected, clear date inputs
-              filterFrom.value = '';
-              filterTo.value = '';
-              applyFilter();
-              return;
-          }
-          
-          // Apply new dates
-          filterFrom.value = from;
-          filterTo.value = to;
-          
-          // Set active class and apply filter
-          quickFilterButtons[type].classList.add('active');
+          saveToStorage();
           applyFilter();
       }
+      
+      function setQuickFilter(period){
+          const d = new Date();
+          let fromDate, toDate;
+          
+          if(period === 'today'){
+              fromDate = new Date(d);
+              toDate = new Date(d);
+          } else if(period === 'yesterday'){
+              d.setDate(d.getDate() - 1); 
+              fromDate = new Date(d);
+              toDate = new Date(d);
+          } else if(period === 'month'){
+              fromDate = new Date(d.getFullYear(), d.getMonth(), 1); 
+              toDate = new Date(d.getFullYear(), d.getMonth() + 1, 0); 
+          } else if(period === 'fiscal'){
+              const dates = getFiscalYearDates();
+              filterFrom.value = dates.from;
+              filterTo.value = dates.to;
+          }
 
-      // -------------------------------------------------------------------
-      // 6. Modal / Entry Handlers
-      // -------------------------------------------------------------------
-      function openModal(action) {
-        currentEditId = null;
-        const today = isoToday();
-        
-        // Reset form
-        dateInput.value = today;
-        descInput.value = '';
-        amtInput.value = '';
-        
-        // Set context
-        accountSelect.value = capitalize(action);
-        title.textContent = `+ Add ${capitalize(action)}`;
-        
-        // Update button style
-        saveBtn.className = `btn-save ${action}`;
-        
-        overlay.classList.add('show');
-      }
-
-      function closeModal() {
-        overlay.classList.remove('show');
-        currentEditId = null;
+          if(fromDate && toDate){
+              filterFrom.value = isoFormat(fromDate);
+              filterTo.value = isoFormat(toDate);
+          } else if (period === 'clear') {
+              filterFrom.value = '';
+              filterTo.value = '';
+          }
+          
+          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+          if (period !== 'clear') {
+              quickFilterButtons[period].classList.add('active');
+          }
+          
+          applyFilter(); 
       }
       
-      function openEdit(id) {
-          const rec = store.records.find(r => r.id === id);
-          if (!rec) return;
-
-          currentEditId = id;
-          dateInput.value = rec.date;
-          accountSelect.value = rec.account;
-          descInput.value = rec.desc;
-          amtInput.value = rec.amount;
-
-          const action = rec.account.toLowerCase();
-          title.textContent = `✏️ Edit ${capitalize(rec.account)}`;
-          saveBtn.className = `btn-save ${action}`;
-          
-          overlay.classList.add('show');
+      // -------------------------------------------------------------------
+      // 6. CRUD Modal Actions 
+      // -------------------------------------------------------------------
+      function openAdd(kind){
+        overlay.classList.add('show'); overlay.dataset.mode = 'add'; overlay.dataset.editId = '';
+        title.textContent = `Add ${capitalize(kind)} Entry`;
+        accountSelect.value = capitalize(kind); 
+        accountSelect.disabled = true; 
+        saveBtn.className = 'btn-save ' + kind;
+        saveBtn.textContent = 'Save';
+        descInput.value = ''; 
+        amtInput.value = ''; 
+        dateInput.value = isoToday();
       }
+      
+      function openEdit(id){
+        const rec = store.records.find(r=>r.id === id);
+        if(!rec) return;
+        overlay.classList.add('show'); overlay.dataset.mode = 'edit'; overlay.dataset.editId = id;
+        title.textContent = `Edit ${rec.account} Entry`;
+        accountSelect.value = rec.account; 
+        accountSelect.disabled = true; 
+        saveBtn.className = 'btn-save edit';
+        saveBtn.textContent = 'Update';
+        descInput.value = rec.desc; amtInput.value = rec.amount; 
+        dateInput.value = rec.date;
+      }
+      
+      function closeModal(){ 
+        overlay.classList.remove('show'); 
+        overlay.dataset.mode=''; 
+        overlay.dataset.editId=''; 
+        accountSelect.disabled = false; 
+      }
+      
+      function closeDeleteModal() { deleteOverlay.classList.remove('show'); deleteConfirmBtn.dataset.id = ''; }
+
+      function closeResetModal() { resetOverlay.classList.remove('show'); } 
 
       function openDeleteConfirm(id) {
           const rec = store.records.find(r => r.id === id);
           if (!rec) return;
           
           deleteConfirmBtn.dataset.id = id;
-          const sign = (rec.account === 'Income' || rec.account === 'Loan') ? 'positive' : 'negative';
           deleteDetailsDiv.innerHTML = `
+            <strong>Type:</strong> <span style="color: ${rec.account === 'Income' ? 'var(--success)' : rec.account === 'Loan' ? 'var(--warning)' : 'var(--danger)'};">${rec.account}</span><br>
             <strong>Date:</strong> ${rec.date}<br>
-            <strong>Account:</strong> <span style="font-weight:700;color:var(--${rec.account.toLowerCase()})">${rec.account}</span><br>
-            <strong>Amount:</strong> ${formatAmount(rec.amount, sign)}<br>
-            <strong>Description:</strong> ${rec.desc}
+            <strong>Description:</strong> ${rec.desc}<br>
+            <strong>Amount:</strong> ${formatAmount(rec.amount, rec.sign)}
           `;
           deleteOverlay.classList.add('show');
       }
-
-      function closeDeleteConfirm() {
-          deleteOverlay.classList.remove('show');
-          deleteConfirmBtn.dataset.id = '';
-      }
       
-      function deleteRecord(id) {
-          const index = store.records.findIndex(r => r.id === id);
-          if (index === -1) return;
+      function confirmDelete(id) {
+          const rec = store.records.find(r=>r.id === id);
+          if(!rec) return;
           
-          const rec = store.records[index];
-          store.records.splice(index, 1);
-          
-          addLog(`[${nowTsForLog()}] DELETED: ${rec.account} Rs ${rec.amount} (${rec.desc})`);
-          
-          closeDeleteConfirm();
-          recalcGrandTotal();
-          applyFilter();
-      }
-      
-      function saveEntry() {
-          const date = dateInput.value;
-          const account = accountSelect.value;
-          const desc = descInput.value.trim();
-          const amount = parseFloat(amtInput.value);
-
-          if (!date || !desc || isNaN(amount) || amount <= 0) {
-              alert('Please ensure all fields are filled correctly.');
-              return;
-          }
-
-          const sign = (account === 'Income' || account === 'Loan') ? 'positive' : 'negative';
-          let logEntry = '';
-
-          if (currentEditId) {
-              // Edit existing record
-              const index = store.records.findIndex(r => r.id === currentEditId);
-              if (index !== -1) {
-                  const oldRec = store.records[index];
-                  store.records[index] = { id: currentEditId, date, account, desc, amount, sign };
-                  logEntry = `[${nowTsForLog()}] EDITED: ${account} Rs ${amount} (${desc}) from Old (Rs ${oldRec.amount}, ${oldRec.desc})`;
-              }
-          } else {
-              // Add new record
-              const newId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-              store.records.push({ id: newId, date, account, desc, amount, sign });
-              logEntry = `[${nowTsForLog()}] ADDED: ${account} Rs ${amount} (${desc})`;
-          }
-          
-          addLog(logEntry);
-          
-          store.records.sort((a, b) => b.date.localeCompare(a.date)); // Sort new entries by date desc
-
-          recalcGrandTotal();
-          applyFilter();
-          closeModal();
-      }
-      
-      // -------------------------------------------------------------------
-      // 7. Utility Handlers (Log, Reset, Backup, Restore)
-      // -------------------------------------------------------------------
-      function openLog() {
-          logOverlay.classList.add('show');
-      }
-      function closeLog() {
-          logOverlay.classList.remove('show');
+          store.records = store.records.filter(r=>r.id !== id);
+          addLog(`[${nowTsForLog()}] Deleted ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
+          saveToStorage();
+          recalcGrandTotal(); 
+          applyFilter(); 
+          closeDeleteModal();
       }
 
-      function openResetConfirm() {
+      function openResetConfirm() { 
           resetOverlay.classList.add('show');
       }
-      function closeResetConfirm() {
-          resetOverlay.classList.remove('show');
-      }
 
-      function resetAllData() {
-          if (!confirm('Are you absolutely sure you want to delete ALL data? This cannot be undone.')) return;
-          
-          // Clear everything
+      function confirmReset() { 
+          // 1. Delete ALL keys related to the app from LocalStorage
           localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(SORT_KEY);
-          // Don't remove theme
-
-          store.records = [];
-          store.logs = [];
-          currentSort = { key: 'date', order: 'desc' }; // Reset sort
+          localStorage.removeItem(THEME_KEY);
           
-          // Re-log the initial load
-          store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
+          // 2. Clear in-memory state and reset sort order
+          store.records = []; 
+          store.logs = [];    
+          currentSort = { key: 'date', order: 'desc' }; 
           
-          closeResetConfirm();
-          // Reload app state
-          recalcGrandTotal();
-          applyFilter();
-          renderLogs(); 
-          
-          alert('All data has been deleted. The application has been reset.');
-      }
-      
-      function downloadData(data, filename, type) {
-          const blob = new Blob([data], { type: type });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-      }
-      
-      function handleBackup() {
-          const dataToBackup = JSON.stringify(store);
-          const filename = `HomeLedger_Backup_${isoToday()}.json`;
-          downloadData(dataToBackup, filename, 'application/json');
-          addLog(`[${nowTsForLog()}] Data backup (JSON) created: ${filename}`);
+          // 3. Immediately save (which saves empty data now)
+          saveToStorage(); 
+
+          // 4. Force reload the app.
+          window.location.reload(); 
       }
 
-      function handleRestore() {
-          // Trigger the hidden file input
-          restoreFileInput.click();
+      function validInputs(){
+        const desc = (descInput.value || '').trim();
+        const amt = Number(amtInput.value);
+        
+        if(!desc){ alert('Description is required.'); return false; }
+        if(isNaN(amt) || amt <= 0){ alert('Amount must be a positive number greater than 0.'); return false; }
+        if(!dateInput.value){ alert('Date is required.'); return false; }
+        
+        return true;
       }
 
-      function processRestoreFile(event) {
-          const file = event.target.files[0];
-          if (!file) return;
-
-          const reader = new FileReader();
-          reader.onload = function(e) {
-              try {
-                  const restoredStore = JSON.parse(e.target.result);
-                  
-                  if (!restoredStore.records || !Array.isArray(restoredStore.records)) {
-                      alert('Error: The file does not contain valid HomeLedger records.');
-                      return;
-                  }
-                  
-                  if (!confirm(`Are you sure you want to overwrite your current data with the backup from the file "${file.name}"?`)) {
-                      return;
-                  }
-
-                  // Restore records and logs
-                  store.records = restoredStore.records;
-                  store.logs = restoredStore.logs || [];
-                  
-                  addLog(`[${nowTsForLog()}] Data RESTORED from file: ${file.name}`);
-
-                  // Re-render and save
-                  recalcGrandTotal();
-                  applyFilter();
-                  renderLogs();
-                  saveToStorage();
-
-                  alert('Data successfully restored!');
-                  
-              } catch (error) {
-                  alert('Error processing file: Invalid JSON format.');
-                  console.error('Restore Error:', error);
-              }
-          };
-          reader.readAsText(file);
-      }
-      
-      function handleExportCSV() {
-          if (store.records.length === 0) {
-              alert('No records to export.');
-              return;
+      function getSignForAccount(account) {
+          if (account === 'Income' || account === 'Loan') {
+              return 'positive';
           }
-
-          // Define headers
-          const headers = ["ID", "Date", "Account", "Description", "Amount", "Sign"];
-          
-          // Map records to CSV rows
-          const csvRows = [
-              headers.join(',')
-          ];
-
-          store.records.forEach(r => {
-              const row = [
-                  `"${r.id}"`, // ID in quotes to handle potential commas
-                  `"${r.date}"`,
-                  `"${r.account}"`,
-                  `"${r.desc.replace(/"/g, '""')}"`, // Escape double quotes in description
-                  r.amount,
-                  r.sign
-              ].join(',');
-              csvRows.push(row);
-          });
-
-          const csvData = csvRows.join('\n');
-          const filename = `HomeLedger_Export_${isoToday()}.csv`;
-          downloadData(csvData, filename, 'text/csv;charset=utf-8;');
-          addLog(`[${nowTsForLog()}] Data exported to CSV: ${filename}`);
+          return 'negative';
       }
-      
-      // -------------------------------------------------------------------
-      // 8. Event Listeners
-      // -------------------------------------------------------------------
-      // Action Buttons (Income/Loan/Expense)
-      document.querySelectorAll('.big-btn').forEach(btn => {
-        btn.addEventListener('click', e => openModal(e.target.dataset.action));
-      });
-      // Modal Buttons
-      cancelBtn.addEventListener('click', closeModal);
-      saveBtn.addEventListener('click', saveEntry);
-      // Delete Confirmation
-      deleteCancelBtn.addEventListener('click', closeDeleteConfirm);
-      deleteConfirmBtn.addEventListener('click', e => deleteRecord(e.target.dataset.id));
-      // Reset Confirmation
-      btnReset.addEventListener('click', openResetConfirm);
-      resetCancelBtn.addEventListener('click', closeResetConfirm);
-      resetConfirmBtn.addEventListener('click', resetAllData);
-      
-      // Top Menu Buttons
-      btnLog.addEventListener('click', openLog);
-      logClose.addEventListener('click', closeLog);
-      btnBackup.addEventListener('click', handleBackup);
-      btnRestore.addEventListener('click', handleRestore);
-      btnExport.addEventListener('click', handleExportCSV);
-      restoreFileInput.addEventListener('change', processRestoreFile);
-      themeToggle.addEventListener('click', toggleTheme);
-      
-      // Filtering & Sorting
-      [filterSearch, filterAccount, filterFrom, filterTo].forEach(el => {
-          el.addEventListener('input', () => {
-              Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
-              applyFilter();
-          });
-      });
-      recordsHead.querySelectorAll('div[data-sort-key]').forEach(h => {
-          h.addEventListener('click', e => handleSortClick(e.target.dataset.sortKey));
-      });
 
-      // Quick Filters
+      function saveHandler(){
+        if(!validInputs()) return;
+        const mode = overlay.dataset.mode;
+        const account = accountSelect.value; 
+        const desc = descInput.value.trim();
+        const amt = Number(amtInput.value);
+        const date = dateInput.value;
+        const sign = getSignForAccount(account);
+
+        if(mode === 'add'){
+          const id = 'r' + Date.now();
+          const rec = { id, date, account, desc, amount: amt, sign };
+          store.records.unshift(rec);
+          addLog(`[${nowTsForLog()}] Added ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
+        } else if(mode === 'edit'){
+          const id = overlay.dataset.editId;
+          const rec = store.records.find(r=>r.id === id);
+          if(rec){
+            const before = `${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`;
+            rec.date = date; 
+            rec.desc = desc; 
+            rec.amount = amt; 
+            rec.sign = sign; 
+            addLog(`[${nowTsForLog()}] Edited ${rec.account} entry (${rec.id}): ${before} → ${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
+          }
+        }
+        closeModal();
+        saveToStorage();
+        recalcGrandTotal(); 
+        applyFilter(); 
+      }
+
+      // -------------------------------------------------------------------
+      // 7. Event Wiring and Initialization
+      // -------------------------------------------------------------------
+      
+      filterFrom.value = isoToday();
+      filterTo.value = isoToday();
+      dateInput.value = isoToday();
+
+      document.querySelectorAll('.big-btn').forEach(b => b.addEventListener('click', ()=> openAdd(b.dataset.action)));
+      saveBtn.addEventListener('click', saveHandler);
+      cancelBtn.addEventListener('click', closeModal);
+      overlay.addEventListener('click', e => { if(e.target === overlay) closeModal(); });
+      document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeModal(); closeDeleteModal(); closeResetModal(); } });
+      
+      deleteCancelBtn.addEventListener('click', closeDeleteModal);
+      deleteConfirmBtn.addEventListener('click', (e) => confirmDelete(e.target.dataset.id));
+      deleteOverlay.addEventListener('click', e => { if(e.target === deleteOverlay) closeDeleteModal(); });
+
+      btnReset.addEventListener('click', openResetConfirm); 
+      resetCancelBtn.addEventListener('click', closeResetModal);
+      resetConfirmBtn.addEventListener('click', confirmReset);
+      resetOverlay.addEventListener('click', e => { if(e.target === resetOverlay) closeResetModal(); });
+      
       quickFilterButtons.today.addEventListener('click', () => setQuickFilter('today'));
       quickFilterButtons.yesterday.addEventListener('click', () => setQuickFilter('yesterday'));
       quickFilterButtons.month.addEventListener('click', () => setQuickFilter('month'));
       quickFilterButtons.fiscal.addEventListener('click', () => setQuickFilter('fiscal'));
       
+      btnLog.addEventListener('click', ()=> { logOverlay.classList.add('show'); });
+      logClose.addEventListener('click', ()=> { logOverlay.classList.remove('show'); });
+      logOverlay.addEventListener('click', e => { if(e.target === logOverlay) logOverlay.classList.remove('show'); });
+      
+      [filterSearch, filterAccount].forEach(el => el.addEventListener('input', applyFilter));
+      [filterFrom, filterTo].forEach(el => el.addEventListener('input', () => {
+          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+          applyFilter();
+      }));
+      
+      recordsHead.querySelectorAll('div[data-sort-key]').forEach(header => {
+          header.addEventListener('click', (e) => handleSortClick(e.target.dataset.sortKey));
+      });
+
+      btnBackup.addEventListener('click', backupData);
+      btnRestore.addEventListener('click', restorePrompt);
+      btnExport.addEventListener('click', exportCSV);
+      themeToggle.addEventListener('click', toggleTheme); 
+
+
+      // -------------------------------------------------------------------
+      // 8. Backup/Restore/Export Functions
+      // -------------------------------------------------------------------
+      function backupData(){
+        try{
+          const dataStr = JSON.stringify(store, null, 2);
+          const blob = new Blob([dataStr], {type: 'application/json'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          a.href = url; a.download = `homeledger_backup_${ts}.json`;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+          addLog(`[${nowTsForLog()}] Backup created`);
+        }catch(e){ alert('Backup failed: ' + e.message); }
+      }
+      function restorePrompt(){
+        restoreFileInput.value = '';
+        restoreFileInput.click();
+      }
+      restoreFileInput.addEventListener('change', function(e){
+        const file = e.target.files && e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev){
+          try{
+            const parsed = JSON.parse(ev.target.result);
+            if(parsed && parsed.records){
+              store.records = parsed.records;
+              store.logs = parsed.logs || store.logs;
+              saveToStorage();
+              recalcGrandTotal(); 
+              applyFilter(); 
+              addLog(`[${nowTsForLog()}] Restored data from file: ${file.name}`);
+              alert('Restore completed. Filter has been reset to "Today".');
+            } else {
+              alert('Invalid backup file.');
+            }
+          }catch(err){
+            alert('Failed to restore: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+      function exportCSV(){
+        try{
+          const rows = [['date','account','description','amount','sign','id']];
+          getFilteredRecords().forEach(r => rows.push([r.date, r.account, r.desc, r.amount, r.sign, r.id]));
+          const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+          const blob = new Blob([csv], {type: 'text/csv'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          a.href = url; a.download = `homeledger_export_${ts}.csv`;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+          addLog(`[${nowTsForLog()}] Exported CSV`);
+        }catch(e){ alert('Export failed: ' + e.message); }
+      }
+
+
       // -------------------------------------------------------------------
       // 9. Initial Load
       // -------------------------------------------------------------------
       loadFromStorage();
 
-      // FIX: The logic for seeding data is now changed to simply rely on the empty seedSampleData()
+      // **FIX:** The logic for seeding data is now changed to simply rely on the empty seedSampleData()
       if(store.records.length === 0){
         store.records = seedSampleData(); // This now returns []
       }
@@ -1159,26 +1082,8 @@
           initialHeader.setAttribute('data-sort-order', currentSort.order);
       }
       
-      setQuickFilter('today'); // Default filter to Today on load
+      setQuickFilter('today'); 
 
-      // -------------------------------------------------------------------
-      // 10. PWA Service Worker Registration (FIX ADDED HERE)
-      // -------------------------------------------------------------------
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful with scope: ', registration.scope);
-              addLog(`[${nowTsForLog()}] PWA Service Worker Registered.`);
-            }, err => {
-              console.error('ServiceWorker registration failed: ', err);
-              addLog(`[${nowTsForLog()}] PWA Service Worker Failed to Register: ${err.message}.`);
-            });
-        });
-      }
-      // -------------------------------------------------------------------
-      
-      
       renderLogs();
       recalcGrandTotal(); 
       applyFilter(); 
@@ -1187,6 +1092,22 @@
         store, saveToStorage, loadFromStorage, recalcGrandTotal, recalcFilteredSummary, applyFilter
       };
     })();
+    
+    // -------------------------------------------------------------------
+    // [2] Service Worker Registration: Path اور Scope کو ٹھیک کیا گیا
+    // -------------------------------------------------------------------
+    (function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        // پاتھ (path) اور سکوپ (scope) کو /hledgerapp/ پر سیٹ کریں۔
+        navigator.serviceWorker.register('/hledgerapp/service-worker.js', {
+          scope: '/hledgerapp/' 
+        })
+          .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+          .catch(err => console.error('ServiceWorker registration failed:', err));
+      }
+    })();
+    // -------------------------------------------------------------------
+    
   </script>
 </body>
 </html>
