@@ -1,7 +1,7 @@
-const CACHE_NAME = 'homeledger-v1.5.0'; // ہر تبدیلی کے بعد اس نمبر کو بڑھائیں
+const CACHE_NAME = 'homeledger-v1.5.0'; // हर बदलाव के बाद इस नंबर को बढ़ाएं
 const urlsToCache = [
-  '/', // روٹ (folder) کو کیش کریں
-  '/index.html',
+  '/', // روٹ URL کو کیش کرتا ہے
+  '/index.html', // آپ کی مین فائل
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png'
