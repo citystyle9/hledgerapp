@@ -2,7 +2,6 @@
   "name": "HomeLedger",
   "short_name": "HomeLedger",
   
-  /* 🌟 یہ لائن آپ کے PWA کے مرکزی Path کو ٹھیک کرتی ہے 🌟 */
   "start_url": "/hledgerapp/",
   
   "display": "standalone",
@@ -10,13 +9,11 @@
   "theme_color": "#60a5fa",
   "icons": [
     {
-      /* 🌟 Icons کا Path ٹھیک کریں 🌟 */
       "src": "/hledgerapp/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      /* 🌟 Icons کا Path ٹھیک کریں 🌟 */
       "src": "/hledgerapp/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
