@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.5.1</title> 
+  <title>HomeLedger v1.5.2</title> 
   
   <link rel="manifest" href="/hledgerapp/manifest.json" /> 
   
@@ -236,12 +236,15 @@
     /* Modal Button Styles */
     .modal h2{margin:0 0 8px 0;font-size:16px}
     .modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
+    
+    /* FIX: Input Zoom on iOS - Set font-size to 16px to prevent viewport zoom */
     .modal input[type="text"],.modal input[type="date"],.modal input[type="number"],.modal select{
         width:100%;padding:10px;border-radius:6px;
         border:1px solid var(--input-border);
         background:var(--input-bg);
         color:var(--text-color); 
         box-sizing: border-box; 
+        font-size: 16px; /* <-- THE FIX */
     }
     .modal .row-2{display:block;} 
     .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
@@ -264,7 +267,7 @@
       .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
       .quick-filters button { flex: 1 1 48%; }
       
-      /* FIX: Records Table on Mobile - Now shows Date, Description, Amount, Action */
+      /* FIX: Records Table on Mobile - Show Date, Description, Amount, Action */
       .records-head, .record-row {
           /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
           /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
@@ -436,7 +439,7 @@
       </div>
     </div>
 
-    <footer>HomeLedger v1.5.1</footer> 
+    <footer>HomeLedger v1.5.2</footer> 
   </div>
 
   <div class="overlay" id="log-overlay" aria-hidden="true">
@@ -558,7 +561,7 @@
       const STORAGE_KEY = 'homeledger_v1_data_v1';
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
-      const VERSION_TAG = 'HomeLedger v1.5.1'; 
+      const VERSION_TAG = 'HomeLedger v1.5.2'; 
       let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
 
