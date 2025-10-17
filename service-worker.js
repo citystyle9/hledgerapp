@@ -1,4 +1,4 @@
-const CACHE_NAME = 'homeledger-v1.5.3'; // <<-- یہ لائن اپ ڈیٹ کر دی گئی ہے۔
+const CACHE_NAME = 'homeledger-v1.5.2'; // <<-- یہ لائن اپ ڈیٹ کر دی گئی ہے۔
 const urlsToCache = [
   '/hledgerapp/', // روٹ URL کو کیچ کرتا ہے (Github Pages URL)
   '/hledgerapp/index.html', // آپ کی مین فائل
