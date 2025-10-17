@@ -1,7 +1,7 @@
-const CACHE_NAME = 'homeledger-v1.5.0'; // हर बदलाव के बाद इस नंबर को बढ़ाएं
+const CACHE_NAME = 'homeledger-v1.5.1'; // 🌟 ورژن اپ ڈیٹ 🌟
 const urlsToCache = [
-  '/hledgerapp/', // روٹ URL को कैच करता है (Github Pages URL)
-  '/hledgerapp/index.html', // आपकी मेन फाइल
+  '/hledgerapp/', // روٹ URL کو کیچ کرتا ہے (Github Pages URL)
+  '/hledgerapp/index.html', // آپ کی مین فائل
   '/hledgerapp/manifest.json',
   '/hledgerapp/icons/icon-192x192.png',
   '/hledgerapp/icons/icon-512x512.png'
@@ -9,14 +9,14 @@ const urlsToCache = [
 
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing...');
-  // ऐप को इंस्टॉल करते समय सभी जरूरी फाइलें कैश में सुरक्षित की जाती हैं
+  // ایپ کو انسٹال کرتے وقت تمام ضروری فائلیں کیش میں محفوظ کی جاتی ہیں
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('[Service Worker] Pre-caching assets.');
         return cache.addAll(urlsToCache);
       })
-      .then(() => self.skipWaiting()) // Worker को तुरंत activate करने के लिए
+      .then(() => self.skipWaiting()) // Worker کو فورا activate کرنے کے لیے
       .catch(err => {
         console.error('[Service Worker] Caching failed:', err);
       })
@@ -25,7 +25,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating...');
-  // पुराने caches को हटाना
+  // پرانے caches کو ہٹانا
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -36,21 +36,21 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // सुनिश्चित करता है कि worker सभी tabs को नियंत्रित करे
+    }).then(() => self.clients.claim()) // یقینی بناتا ہے کہ worker تمام tabs کو کنٹرول کرے
   );
 });
 
 self.addEventListener('fetch', event => {
-  // हर अनुरोध के लिए, पहले कैश में चेक किया जाता है
+  // ہر درخواست کے لیے، پہلے کیش میں چیک کیا جاتا ہے
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // अगर कैश में फाइल मौजूद है तो उसे वापस कर दिया जाता है (आफलाइन काम)
+        // اگر کیش میں فائل موجود ہے تو اسے واپس کر دیا جاتا ہے (آف لائن کام)
         if (response) {
             return response;
         }
         
-        // अगर कैच में नहीं है, तो नेटवर्क से लाएं
+        // اگر کیش میں نہیں ہے، تو نیٹ ورک سے لائیں
         return fetch(event.request);
       })
   );
