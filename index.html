@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.4.9 (IndexedDB)</title>
+  <title>HomeLedger v1.5.2</title> 
   
   <link rel="manifest" href="/hledgerapp/manifest.json" /> 
-
+  
   <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
   
@@ -236,12 +236,15 @@
     /* Modal Button Styles */
     .modal h2{margin:0 0 8px 0;font-size:16px}
     .modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
+    
+    /* FIX: Input Zoom on iOS - Set font-size to 16px to prevent viewport zoom */
     .modal input[type="text"],.modal input[type="date"],.modal input[type="number"],.modal select{
         width:100%;padding:10px;border-radius:6px;
         border:1px solid var(--input-border);
         background:var(--input-bg);
         color:var(--text-color); 
         box-sizing: border-box; 
+        font-size: 16px; /* <-- THE FIX */
     }
     .modal .row-2{display:block;} 
     .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
@@ -264,26 +267,48 @@
       .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
       .quick-filters button { flex: 1 1 48%; }
       
-      /* FIX: Records Table on Mobile - Show Date, Amount, Action */
+      /* FIX: Records Table on Mobile - Show Date, Description, Amount, Action */
       .records-head, .record-row {
-          /* Set grid for 3 items: Date(80px), Amount(1fr), Action(50px) */
-          /* Note: These are the 1st, 4th, and 5th items in the HTML */
-          grid-template-columns: 80px 1fr 50px;
+          /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
+          /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
+          grid-template-columns: 80px 1fr 90px 50px;
       }
-      /* Hide Account (2nd) and Description (3rd) */
-      .records-head div:nth-child(2), .record-row div:nth-child(2), 
+      
+      /* 1. Hide Account (2nd item) */
+      .records-head div:nth-child(2), .record-row div:nth-child(2) {
+          display: none !important; /* Force hide account column */
+      }
+      
+      /* 2. Ensure Description (3rd item) is fully visible and takes 1fr */
+      /* Since 2nd is hidden, 3rd will take the second column spot (1fr) */
       .records-head div:nth-child(3), .record-row div:nth-child(3) {
-          display: none;
+          /* Added !important to ensure display:block from parent style is overridden */
+          display: flex !important; 
+          align-items: center; 
+          word-break: break-word; 
+          white-space: normal; /* Allow text to wrap */
       }
-      /* Ensure Amount (4th) and Action (5th) are visible */
-      .records-head div:nth-child(4), .record-row div:nth-child(4), 
-      .records-head div:nth-child(5), .record-row div:nth-child(5) {
-          /* Override any previous display:none that might have been there */
-          display: flex; /* Amount and Action should be visible */
-          align-items: center; /* Center the content for Action */
-          justify-content: center;
+      
+      /* 3. Ensure Amount (4th item) is visible and aligned */
+      .records-head div:nth-child(4), .record-row div:nth-child(4) {
+          display: flex !important;
+          align-items: center; 
+          justify-content: flex-end; /* Align amount to the right */
       }
 
+      /* 4. Ensure Action (5th item) is visible and centered */
+      .records-head div:nth-child(5), .record-row div:nth-child(5) {
+          display: flex !important; 
+          align-items: center; 
+          justify-content: center;
+      }
+      
+      /* 5. Ensure Date (1st item) is visible and aligned */
+      .records-head div:nth-child(1), .record-row div:nth-child(1) {
+          display: flex !important; 
+          align-items: center; 
+          justify-content: flex-start;
+      }
     }
     
     /* THEME ICON HIGHLIGHT CSS START */
@@ -414,7 +439,7 @@
       </div>
     </div>
 
-    <footer>HomeLedger v1.4.9 (IndexedDB)</footer>
+    <footer>HomeLedger v1.5.2</footer> 
   </div>
 
   <div class="overlay" id="log-overlay" aria-hidden="true">
@@ -533,125 +558,16 @@
           fiscal: document.getElementById('quick-fiscal')
       };
 
-      const STORAGE_KEY = 'homeledger_v1_data_v1'; // LocalStorage key (used for migration only)
+      const STORAGE_KEY = 'homeledger_v1_data_v1';
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
-      const VERSION_TAG = 'HomeLedger v1.4.9 (IndexedDB)'; 
+      const VERSION_TAG = 'HomeLedger v1.5.2'; 
       let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
-      
-      // 🌟 IndexedDB Constants 🌟
-      const DB_NAME = 'HomeLedgerDB_v2'; 
-      const DB_VERSION = 2; // Version bump for new structure
-      const RECORDS_STORE = 'records';
-      const LOGS_STORE = 'logs';
-      let db = null; // IndexedDB instance
-
-      // -------------------------------------------------------------------
-      // 1.5. IndexedDB Utility Class and Migration Logic (نئی لاجک)
-      // -------------------------------------------------------------------
-      const DB = {
-          // IndexedDB کو Initialize کریں
-          init: () => new Promise((resolve, reject) => {
-              if (db) return resolve(db);
-              const request = indexedDB.open(DB_NAME, DB_VERSION);
-              
-              request.onupgradeneeded = (event) => {
-                  db = event.target.result;
-                  // Records Store
-                  if (!db.objectStoreNames.contains(RECORDS_STORE)) {
-                      db.createObjectStore(RECORDS_STORE, { keyPath: 'id' });
-                  }
-                  // Logs Store (اب logs کو بھی ایک object کے طور پر محفوظ کیا جائے گا)
-                  if (!db.objectStoreNames.contains(LOGS_STORE)) {
-                      db.createObjectStore(LOGS_STORE, { keyPath: 'id' });
-                  }
-              };
-              
-              request.onsuccess = (event) => {
-                  db = event.target.result;
-                  resolve(db);
-              };
-
-              request.onerror = (event) => {
-                  console.error("IndexedDB initialization failed:", event.target.error);
-                  reject(event.target.error);
-              };
-          }),
-
-          // تمام ڈیٹا لوڈ کریں
-          loadAll: (storeName) => new Promise((resolve, reject) => {
-              if (!db) return reject(new Error("DB not initialized"));
-              const transaction = db.transaction([storeName], 'readonly');
-              const store = transaction.objectStore(storeName);
-              const request = store.getAll();
-              request.onsuccess = (event) => resolve(event.target.result);
-              request.onerror = (event) => reject(event.target.error);
-          }),
-
-          // ایک ریکارڈ محفوظ/اپ ڈیٹ کریں
-          saveRecord: (storeName, record) => new Promise((resolve, reject) => {
-              if (!db) return reject(new Error("DB not initialized"));
-              const transaction = db.transaction([storeName], 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.put(record); // put = insert or update
-              request.onsuccess = () => resolve();
-              request.onerror = (event) => reject(event.target.error);
-          }),
-          
-          // ایک ریکارڈ ڈیلیٹ کریں
-          deleteRecord: (storeName, id) => new Promise((resolve, reject) => {
-              if (!db) return reject(new Error("DB not initialized"));
-              const transaction = db.transaction([storeName], 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.delete(id);
-              request.onsuccess = () => resolve();
-              request.onerror = (event) => reject(event.target.error);
-          }),
-
-          // تمام ڈیٹا کلیئر کریں
-          clearAll: (storeName) => new Promise((resolve, reject) => {
-              if (!db) return reject(new Error("DB not initialized"));
-              const transaction = db.transaction([storeName], 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.clear();
-              request.onsuccess = () => resolve();
-              request.onerror = (event) => reject(event.target.error);
-          })
-      };
-      
-      // LocalStorage سے IndexedDB میں ڈیٹا منتقل کرنے کا فنکشن
-      async function migrateOldData(oldStore) {
-          if (!oldStore || oldStore.records.length === 0) return;
-
-          console.log("Migration: Moving old LocalStorage data to IndexedDB...");
-
-          // 1. Migrate Records
-          const recordPromises = oldStore.records.map(r => DB.saveRecord(RECORDS_STORE, r));
-          
-          // 2. Migrate Logs
-          const logPromises = (oldStore.logs || []).map((entry, index) => {
-              const logRecord = {
-                  id: 'l' + (Date.now() + index), 
-                  entry: entry,
-                  timestamp: Date.now() + index // Sorting کے لیے
-              };
-              return DB.saveRecord(LOGS_STORE, logRecord);
-          });
-
-          await Promise.all([...recordPromises, ...logPromises]);
-          
-          // 3. Migration کے بعد LocalStorage کی پرانی Key ڈیلیٹ کر دیں
-          localStorage.removeItem(STORAGE_KEY);
-          
-          console.log("Migration complete. LocalStorage cleared.");
-      }
-
 
       // -------------------------------------------------------------------
       // 2. Helper Functions
       // -------------------------------------------------------------------
-// ... (rest of the file)
       function pad(n){ return String(n).padStart(2,'0'); }
       function nowTsForLog(){
         const d = new Date();
@@ -682,53 +598,38 @@
           return { from: isoFormat(fromDate), to: isoFormat(toDate) };
       }
       
+      // FIX: seedSampleData function now returns an empty array 
       function seedSampleData() {
-          return [];
+          return []; // Returns an empty array to ensure no data is ever seeded automatically
       }
       // -------------------------------------------------------------------
       // 3. Persistence & Theme
       // -------------------------------------------------------------------
-      // ❌ saveToStorage کو صرف settings کے لیے تبدیل کیا گیا ہے
       function saveToStorage(){
         try{ 
-            // صرف Sort Key اور Theme کو LocalStorage میں رکھیں
+            // Only save the main storage key if there are records or logs.
+            if (store.records.length > 0 || store.logs.length > 0) {
+                 localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+            } else {
+                 // FIX: Ensure the STORAGE_KEY is explicitly removed if records are empty
+                 localStorage.removeItem(STORAGE_KEY);
+            }
+            // Save settings keys regardless
             localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
         }catch(e){}
       }
-      
-      // ✅ loadFromStorage کو Asynchronous بنایا گیا ہے اور IndexedDB سے لوڈ کرتا ہے
-      async function loadFromStorage(){
+      function loadFromStorage(){
         try{
-            await DB.init(); // DB کو Initialize کریں
-            
-            // 🌟 STEP 1: LocalStorage سے پرانا ڈیٹا چیک کریں (Migration)
-            const oldRaw = localStorage.getItem(STORAGE_KEY);
-            if (oldRaw) {
-                 await migrateOldData(JSON.parse(oldRaw));
-            }
-            
-            // 🌟 STEP 2: IndexedDB سے تازہ ترین ڈیٹا لوڈ کریں
-            const [records, logsDB] = await Promise.all([
-                DB.loadAll(RECORDS_STORE),
-                DB.loadAll(LOGS_STORE)
-            ]);
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(raw){ 
+              const parsed = JSON.parse(raw); 
+              if(parsed.records) store.records = parsed.records; 
+              if(parsed.logs) store.logs = parsed.logs; 
+          }
+          const rawSort = localStorage.getItem(SORT_KEY);
+          if(rawSort) currentSort = JSON.parse(rawSort);
 
-            store.records = records || [];
-            
-            // Logs کو ان کے timestamp کی بنیاد پر ترتیب دیں
-            store.logs = (logsDB || [])
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .map(l => l.entry);
-            
-            // Sort Key کو LocalStorage سے ہی لوڈ کریں
-            const rawSort = localStorage.getItem(SORT_KEY);
-            if(rawSort) currentSort = JSON.parse(rawSort);
-
-        }catch(e){
-            console.error("Failed to load data from IndexedDB:", e);
-            store.records = []; 
-            store.logs = [];
-        }
+        }catch(e){}
       }
       
       function applyTheme(theme){
@@ -749,8 +650,7 @@
         const cur = localStorage.getItem(THEME_KEY) || 'dark';
         const next = (cur === 'dark') ? 'light' : 'dark';
         applyTheme(next);
-        // Log is now async
-        addLog(`[${nowTsForLog()}] Theme changed to ${next}`); 
+        addLog(`[${nowTsForLog()}] Theme changed to ${next}`);
       }
 
       // -------------------------------------------------------------------
@@ -763,6 +663,7 @@
         if (rows.length === 0) {
             const emptyDiv = document.createElement('div');
             emptyDiv.className = 'empty-state';
+            // Custom message if filters are active, otherwise the standard startup message
             emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
                                     ? "No records found matching your current filters."
                                     : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
@@ -796,22 +697,11 @@
         });
       }
       
-      // ✅ addLog کو Asynchronous بنایا گیا ہے اور IndexedDB میں محفوظ کیا گیا ہے
-      async function addLog(entry){
-        const logRecord = {
-            id: 'l' + Date.now(), 
-            timestamp: Date.now(),
-            entry: entry,
-        };
-        
-        // Asynchronously log entry کو DB میں محفوظ کریں
-        await DB.saveRecord(LOGS_STORE, logRecord);
-        
-        // in-memory array اور UI کو اپ ڈیٹ کریں
+      function addLog(entry){
         store.logs.unshift(entry);
         if(store.logs.length>500) store.logs.length = 500;
         renderLogs();
-        saveToStorage(); // Sort key save کرنے کے لیے کال کریں
+        saveToStorage();
       }
 
       function recalcGrandTotal(){
@@ -999,19 +889,13 @@
           deleteOverlay.classList.add('show');
       }
       
-      // ✅ confirmDelete کو Asynchronous بنایا گیا ہے اور IndexedDB से डिलीट करता है
-      async function confirmDelete(id) {
+      function confirmDelete(id) {
           const rec = store.records.find(r=>r.id === id);
           if(!rec) return;
           
           store.records = store.records.filter(r=>r.id !== id);
-          
-          // IndexedDB से रिकॉर्ड डिलीٹ کریں
-          await DB.deleteRecord(RECORDS_STORE, id);
-          
-          // Log entry create کریں (جو خود ہی DB میں محفوظ ہو جائے گا)
           addLog(`[${nowTsForLog()}] Deleted ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
-          
+          saveToStorage();
           recalcGrandTotal(); 
           applyFilter(); 
           closeDeleteModal();
@@ -1021,21 +905,20 @@
           resetOverlay.classList.add('show');
       }
 
-      // ✅ confirmReset کو Asynchronous بنایا گیا ہے اور IndexedDB کو کلیئر کرتا ہے
-      async function confirmReset() { 
-          // 1. LocalStorage سے صرف settings کی keys ڈیلیٹ کریں
+      function confirmReset() { 
+          // 1. Delete ALL keys related to the app from LocalStorage
+          localStorage.removeItem(STORAGE_KEY);
           localStorage.removeItem(SORT_KEY);
           localStorage.removeItem(THEME_KEY);
           
-          // 2. IndexedDB سے ریکارڈز اور لاگز کو ڈیلیٹ کریں
-          await DB.clearAll(RECORDS_STORE);
-          await DB.clearAll(LOGS_STORE);
-
-          // 3. Clear in-memory state and reset sort order
+          // 2. Clear in-memory state and reset sort order
           store.records = []; 
           store.logs = [];    
           currentSort = { key: 'date', order: 'desc' }; 
           
+          // 3. Immediately save (which saves empty data now)
+          saveToStorage(); 
+
           // 4. Force reload the app.
           window.location.reload(); 
       }
@@ -1058,8 +941,7 @@
           return 'negative';
       }
 
-      // ✅ saveHandler کو Asynchronous بنایا گیا ہے اور IndexedDB میں ریکارڈ سیو کرتا ہے
-      async function saveHandler(){
+      function saveHandler(){
         if(!validInputs()) return;
         const mode = overlay.dataset.mode;
         const account = accountSelect.value; 
@@ -1068,16 +950,14 @@
         const date = dateInput.value;
         const sign = getSignForAccount(account);
 
-        let rec;
-
         if(mode === 'add'){
           const id = 'r' + Date.now();
-          rec = { id, date, account, desc, amount: amt, sign };
+          const rec = { id, date, account, desc, amount: amt, sign };
           store.records.unshift(rec);
           addLog(`[${nowTsForLog()}] Added ${rec.account} entry: ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
         } else if(mode === 'edit'){
           const id = overlay.dataset.editId;
-          rec = store.records.find(r=>r.id === id);
+          const rec = store.records.find(r=>r.id === id);
           if(rec){
             const before = `${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`;
             rec.date = date; 
@@ -1087,13 +967,8 @@
             addLog(`[${nowTsForLog()}] Edited ${rec.account} entry (${rec.id}): ${before} → ${rec.account} ${rec.desc} ${formatAmount(rec.amount,rec.sign)} on ${rec.date}`);
           }
         }
-        
-        // IndexedDB میں ریکارڈ سیو/اپ ڈیٹ کریں
-        if(rec) {
-            await DB.saveRecord(RECORDS_STORE, rec);
-        }
-
         closeModal();
+        saveToStorage();
         recalcGrandTotal(); 
         applyFilter(); 
       }
@@ -1170,28 +1045,13 @@
         const file = e.target.files && e.target.files[0];
         if(!file) return;
         const reader = new FileReader();
-        // ✅ Restore logic ko Asynchronous data saving ke liye update kiya gaya hai
-        reader.onload = async function(ev){
+        reader.onload = function(ev){
           try{
             const parsed = JSON.parse(ev.target.result);
             if(parsed && parsed.records){
-                
-              // 1. Clear current IndexedDB data before restoring
-              await DB.clearAll(RECORDS_STORE);
-              await DB.clearAll(LOGS_STORE);
-
-              // 2. Load the new data into memory
               store.records = parsed.records;
-              store.logs = parsed.logs || [];
-              
-              // 3. Save new records to IndexedDB
-              const savePromises = store.records.map(r => DB.saveRecord(RECORDS_STORE, r));
-              const logPromises = store.logs.map((entry, index) => {
-                  const logRecord = { id: 'l' + (Date.now() + index), entry: entry, timestamp: Date.now() + index };
-                  return DB.saveRecord(LOGS_STORE, logRecord);
-              });
-              await Promise.all([...savePromises, ...logPromises]);
-
+              store.logs = parsed.logs || store.logs;
+              saveToStorage();
               recalcGrandTotal(); 
               applyFilter(); 
               addLog(`[${nowTsForLog()}] Restored data from file: ${file.name}`);
@@ -1223,56 +1083,57 @@
 
 
       // -------------------------------------------------------------------
-      // 9. Initial Load (Asynchronous Main Function)
+      // 9. Initial Load
       // -------------------------------------------------------------------
-      // ✅ Main initialization function is now async
-      async function initializeApp() {
-          await loadFromStorage(); // Wait for data to be loaded/migrated
+      loadFromStorage();
 
-          if(store.records.length === 0){
-            store.records = seedSampleData(); 
-          }
+      // FIX: The logic for seeding data is now changed to simply rely on the empty seedSampleData()
+      if(store.records.length === 0){
+        store.records = seedSampleData(); // This now returns []
+      }
+      // If records are still empty, but the STORAGE_KEY was not found, we save the empty state.
+      if(store.records.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
+        saveToStorage(); // Save the empty state so it doesn't try to load seed data on next run (just a safeguard)
+      }
 
-          if(store.logs.length === 0){
-            // Add initial log entry AFTER all potential migration/load is done
-            await addLog(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`); 
-          }
 
-          const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-          applyTheme(savedTheme);
-          
-          const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
-          if (initialHeader) {
-              initialHeader.setAttribute('data-sort-order', currentSort.order);
-          }
-          
-          setQuickFilter('today'); 
+      if(store.logs.length === 0){
+        store.logs.unshift(`[${nowTsForLog()}] App loaded (${VERSION_TAG})`);
+      }
 
-          renderLogs();
-          recalcGrandTotal(); 
-          applyFilter(); 
-
-          window._homeledger = {
-            store, saveToStorage, loadFromStorage, recalcGrandTotal, recalcFilteredSummary, applyFilter
-          };
+      const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+      applyTheme(savedTheme);
+      
+      const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+      if (initialHeader) {
+          initialHeader.setAttribute('data-sort-order', currentSort.order);
       }
       
-      // Call the new async initialization function
-      initializeApp();
-      
-      // -------------------------------------------------------------------
-      // [2] Service Worker Registration
-      // -------------------------------------------------------------------
-      (function registerServiceWorker() {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('/hledgerapp/service-worker.js', {
-            scope: '/hledgerapp/' 
-          })
-            .then(reg => console.log('Service Worker registered with scope:', reg.scope))
-            .catch(err => console.error('ServiceWorker registration failed:', err));
-        }
-      })();
-      // -------------------------------------------------------------------
+      setQuickFilter('today'); 
+
+      renderLogs();
+      recalcGrandTotal(); 
+      applyFilter(); 
+
+      window._homeledger = {
+        store, saveToStorage, loadFromStorage, recalcGrandTotal, recalcFilteredSummary, applyFilter
+      };
+    })();
+    
+    // -------------------------------------------------------------------
+    // [2] Service Worker Registration: Path اور Scope کو ٹھیک کیا گیا
+    // -------------------------------------------------------------------
+    (function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        // پاتھ (path) اور سکوپ (scope) کو /hledgerapp/ پر سیٹ کریں۔
+        navigator.serviceWorker.register('/hledgerapp/service-worker.js', {
+          scope: '/hledgerapp/' 
+        })
+          .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+          .catch(err => console.error('ServiceWorker registration failed:', err));
+      }
+    })();
+    // -------------------------------------------------------------------
     
   </script>
 </body>
