@@ -267,27 +267,44 @@
       /* FIX: Records Table on Mobile - Now shows Date, Description, Amount, Action */
       .records-head, .record-row {
           /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
-          grid-template-columns: 80px 1fr 80px 50px;
+          /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
+          grid-template-columns: 80px 1fr 90px 50px;
       }
       
-      /* Hide Account (2nd item) */
+      /* 1. Hide Account (2nd item) */
       .records-head div:nth-child(2), .record-row div:nth-child(2) {
-          display: none; 
+          display: none !important; /* Force hide account column */
       }
       
-      /* Ensure Description (3rd item) is visible and takes up 1fr space */
+      /* 2. Ensure Description (3rd item) is fully visible and takes 1fr */
+      /* Since 2nd is hidden, 3rd will take the second column spot (1fr) */
       .records-head div:nth-child(3), .record-row div:nth-child(3) {
-          display: block; 
+          /* Added !important to ensure display:block from parent style is overridden */
+          display: flex !important; 
           align-items: center; 
           word-break: break-word; 
+          white-space: normal; /* Allow text to wrap */
+      }
+      
+      /* 3. Ensure Amount (4th item) is visible and aligned */
+      .records-head div:nth-child(4), .record-row div:nth-child(4) {
+          display: flex !important;
+          align-items: center; 
+          justify-content: flex-end; /* Align amount to the right */
       }
 
-      /* Ensure Amount (4th item) and Action (5th item) are centered and visible */
-      .records-head div:nth-child(4), .record-row div:nth-child(4), 
+      /* 4. Ensure Action (5th item) is visible and centered */
       .records-head div:nth-child(5), .record-row div:nth-child(5) {
-          display: flex; 
+          display: flex !important; 
           align-items: center; 
           justify-content: center;
+      }
+      
+      /* 5. Ensure Date (1st item) is visible and aligned */
+      .records-head div:nth-child(1), .record-row div:nth-child(1) {
+          display: flex !important; 
+          align-items: center; 
+          justify-content: flex-start;
       }
     }
     
@@ -578,7 +595,7 @@
           return { from: isoFormat(fromDate), to: isoFormat(toDate) };
       }
       
-      // *** FIX: seedSampleData function now returns an empty array ***
+      // FIX: seedSampleData function now returns an empty array 
       function seedSampleData() {
           return []; // Returns an empty array to ensure no data is ever seeded automatically
       }
@@ -591,7 +608,7 @@
             if (store.records.length > 0 || store.logs.length > 0) {
                  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
             } else {
-                 // **FIX:** Ensure the STORAGE_KEY is explicitly removed if records are empty
+                 // FIX: Ensure the STORAGE_KEY is explicitly removed if records are empty
                  localStorage.removeItem(STORAGE_KEY);
             }
             // Save settings keys regardless
@@ -1067,7 +1084,7 @@
       // -------------------------------------------------------------------
       loadFromStorage();
 
-      // **FIX:** The logic for seeding data is now changed to simply rely on the empty seedSampleData()
+      // FIX: The logic for seeding data is now changed to simply rely on the empty seedSampleData()
       if(store.records.length === 0){
         store.records = seedSampleData(); // This now returns []
       }
