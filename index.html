@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.5.1</title> <link rel="manifest" href="/hledgerapp/manifest.json" /> 
+  <title>HomeLedger v1.5.1</title> 
+  
+  <link rel="manifest" href="/hledgerapp/manifest.json" /> 
   
   <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
@@ -262,26 +264,31 @@
       .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
       .quick-filters button { flex: 1 1 48%; }
       
-      /* FIX: Records Table on Mobile - Show Date, Amount, Action */
+      /* FIX: Records Table on Mobile - Now shows Date, Description, Amount, Action */
       .records-head, .record-row {
-          /* Set grid for 3 items: Date(80px), Amount(1fr), Action(50px) */
-          /* Note: These are the 1st, 4th, and 5th items in the HTML */
-          grid-template-columns: 80px 1fr 50px;
+          /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
+          grid-template-columns: 80px 1fr 80px 50px;
       }
-      /* Hide Account (2nd) and Description (3rd) */
-      .records-head div:nth-child(2), .record-row div:nth-child(2), 
+      
+      /* Hide Account (2nd item) */
+      .records-head div:nth-child(2), .record-row div:nth-child(2) {
+          display: none; 
+      }
+      
+      /* Ensure Description (3rd item) is visible and takes up 1fr space */
       .records-head div:nth-child(3), .record-row div:nth-child(3) {
-          display: none;
-      }
-      /* Ensure Amount (4th) and Action (5th) are visible */
-      .records-head div:nth-child(4), .record-row div:nth-child(4), 
-      .records-head div:nth-child(5), .record-row div:nth-child(5) {
-          /* Override any previous display:none that might have been there */
-          display: flex; /* Amount and Action should be visible */
-          align-items: center; /* Center the content for Action */
-          justify-content: center;
+          display: block; 
+          align-items: center; 
+          word-break: break-word; 
       }
 
+      /* Ensure Amount (4th item) and Action (5th item) are centered and visible */
+      .records-head div:nth-child(4), .record-row div:nth-child(4), 
+      .records-head div:nth-child(5), .record-row div:nth-child(5) {
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
+      }
     }
     
     /* THEME ICON HIGHLIGHT CSS START */
@@ -412,7 +419,8 @@
       </div>
     </div>
 
-    <footer>HomeLedger v1.5.1</footer> </div>
+    <footer>HomeLedger v1.5.1</footer> 
+  </div>
 
   <div class="overlay" id="log-overlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
@@ -533,7 +541,6 @@
       const STORAGE_KEY = 'homeledger_v1_data_v1';
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
-      // 🌟 ورژن اپ ڈیٹ 🌟
       const VERSION_TAG = 'HomeLedger v1.5.1'; 
       let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
