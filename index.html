@@ -365,7 +365,8 @@
             <button id="btn-log">📜 View Activity Log</button>
             <button id="btn-reset">⚠️ Delete All Data</button>
             <button id="btn-backup">Backup</button>
-            <button id="btn-restore">Restore</button>
+            <button id="btn-restore">Restore from Local File</button>
+            <button id="btn-restore-sheet" style="font-weight:700; color:var(--accent);">☁️ Restore from Sheet</button>
             <button id="btn-export">Export CSV</button>
           </div>
         </details>
@@ -542,6 +543,7 @@
       const filterTo = document.getElementById('filter-to');
       const btnBackup = document.getElementById('btn-backup');
       const btnRestore = document.getElementById('btn-restore');
+      const btnRestoreSheet = document.getElementById('btn-restore-sheet'); // <-- NEW CONSTANT
       const btnExport = document.getElementById('btn-export');
       const themeToggle = document.getElementById('theme-toggle'); 
       const restoreFileInput = document.getElementById('restore-file');
@@ -565,7 +567,6 @@
       // 2. GOOGLE SHEETS SYNC LOGIC (The updated section for fixes)
       // -------------------------------------------------------------------
       // 1. Webhook URL: (Your successfully deployed Apps Script URL)
-      // آپ کا Webhook URL یہاں ڈال دیا گیا ہے!
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
       // 2. Central Sync Function: Sends data to Google Sheets
@@ -1100,9 +1101,9 @@
                   if (data.records && Array.isArray(data.records)) {
                       store.records = data.records;
                       store.logs = data.logs || [];
-                      store.logs.unshift(`[${nowTsForLog()}] Data restored from backup file: ${file.name}`);
+                      store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
                       recalcGrandTotal();
-                      alert(`Successfully restored ${data.records.length} records.`);
+                      alert(`Successfully restored ${data.records.length} records from local file.`);
                   } else {
                       alert('Error: Invalid backup file format. "records" array not found.');
                   }
@@ -1113,6 +1114,52 @@
               event.target.value = null; 
           };
           reader.readAsText(file);
+      }
+      
+      // NEW FUNCTION: Restore data directly from Google Sheet
+      async function restoreDataFromSheets() {
+          // 1. Confirmation
+          if (!confirm("Are you sure you want to pull ALL active records from Google Sheet and replace your current Local Data? (This action cannot be undone locally)")) {
+              return;
+          }
+          
+          // 2. Build Restore URL
+          const RESTORE_URL = GOOGLE_SHEETS_WEBHOOK + '?action=getall';
+          
+          addLog(`[${nowTsForLog()}] Attempting to restore data from Google Sheet...`);
+
+          try {
+              // 3. Fetch Data (Must be a simple GET request for cross-origin JSON response)
+              const response = await fetch(RESTORE_URL);
+              
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              
+              const data = await response.json(); 
+
+              if (data.records && Array.isArray(data.records)) {
+                  // 4. Overwrite Local Storage records
+                  store.records = data.records;
+                  
+                  // 5. Update Log
+                  store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${data.records.length} records loaded.`);
+
+                  // 6. Recalculate and Re-render
+                  recalcGrandTotal(); 
+                  alert(`✅ Successfully restored ${data.records.length} active records from your Google Sheet.`);
+                  
+              } else {
+                  alert('❌ Restore Failed: Did not receive valid records array from the sheet. Check if your Apps Script is deployed with the latest code.');
+                  addLog(`[${nowTsForLog()}] ERROR: Restore from Sheet failed (Invalid response).`);
+              }
+
+          } catch (error) {
+              console.error('Sheet Restore Failed:', error);
+              alert('❌ Restore Failed: Could not connect to Google Sheet or server error occurred. Check Console for details.');
+              addLog(`[${nowTsForLog()}] ERROR: Restore from Sheet failed (${error.message}).`);
+          }
+          closeModal(); // Close the menu dropdown
       }
 
 
@@ -1148,6 +1195,7 @@
       btnBackup.addEventListener('click', backupData);
       btnExport.addEventListener('click', exportCSV);
       btnRestore.addEventListener('click', () => restoreFileInput.click());
+      btnRestoreSheet.addEventListener('click', restoreDataFromSheets); // <-- NEW LISTENER
       restoreFileInput.addEventListener('change', restoreData);
 
       // Filtering Events
