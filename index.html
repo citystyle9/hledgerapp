@@ -1,570 +1,564 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.5.2</title> 
-  
-  <link rel="manifest" href="/hledgerapp/manifest.json" /> 
-  
-  <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
-  
-  <style>
-    /* ------------------------------------------------------------------- */
-    /* 1. CSS Variables and Theme Setup */
-    /* ------------------------------------------------------------------- */
-    :root{
-      /* CORE COLORS */
-      --bg:#0a0d14; 
-      --panel:#1f2937;
-      --glass-border:#4b5563;
-      --muted:#f3f4f6; 
-      
-      /* UTILITY COLORS */
-      --accent:#60a5fa; --success:#34d399; --warning:#fbbf24; --danger:#ef4444;
-      
-      /* SEMANTIC VARIABLES */
-      --text-color: var(--muted);
-      --input-bg: var(--bg); 
-      --input-border: var(--glass-border);
-      --focus-outline-color: var(--accent);
-      --active-filter-bg: var(--accent);
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HomeLedger v1.5.2</title>
+  
+  <link rel="manifest" href="/hledgerapp/manifest.json" />
+  
+  <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
+  
+  <style>
+    /* ------------------------------------------------------------------- */
+    /* 1. CSS Variables and Theme Setup */
+    /* ------------------------------------------------------------------- */
+    :root{
+      /* CORE COLORS */
+      --bg:#0a0d14; 
+      --panel:#1f2937;
+      --glass-border:#4b5563;
+      --muted:#f3f4f6; 
+      
+      /* UTILITY COLORS */
+      --accent:#60a5fa; --success:#34d399; --warning:#fbbf24; --danger:#ef4444;
+      
+      /* SEMANTIC VARIABLES */
+      --text-color: var(--muted);
+      --input-bg: var(--bg); 
+      --input-border: var(--glass-border);
+      --focus-outline-color: var(--accent);
+      --active-filter-bg: var(--accent);
 
-      --font:Inter,ui-sans-serif,system-ui; --gap:12px;
-    }
-    
-    body[data-theme="light"]{
-      --bg:#f9fafb; 
-      --panel:#ffffff; 
-      --glass-border:#e5e7eb; 
-      --muted:#111827; 
-      
-      --accent:#2563eb; --success:#059669; --warning:#b45309; --danger:#b91c1c;
-      
-      --text-color: var(--muted);
-      --input-bg: var(--ffffff); 
-      --input-border: var(--glass-border);
-      --focus-outline-color: var(--accent); 
-      --active-filter-bg: var(--accent);
-      
-      color:var(--text-color);
-    }
-    
-    /* ------------------------------------------------------------------- */
-    /* 2. General Styles and Layout */
-    /* ------------------------------------------------------------------- */
-    body{background:var(--bg);color:var(--text-color);font-family:var(--font);margin:0;padding:0;display:flex;justify-content:center;padding:14px;transition:background .2s,color .2s}
-    .wrap{width:100%;max-width:920px;padding:12px;display:flex;flex-direction:column;gap:var(--gap)}
-    
-    .topbar, .balance-card, .filter-card, .records, .modal{
-        background:var(--panel);
-        border:1px solid var(--glass-border);
-        border-radius:6px;
-        box-shadow: none;
-    }
+      --font:Inter,ui-sans-serif,system-ui; --gap:12px;
+    }
+    
+    body[data-theme="light"]{
+      --bg:#f9fafb; 
+      --panel:#ffffff; 
+      --glass-border:#e5e7eb; 
+      --muted:#111827; 
+      
+      --accent:#2563eb; --success:#059669; --warning:#b45309; --danger:#b91c1c;
+      
+      --text-color: var(--muted);
+      --input-bg: var(--ffffff); 
+      --input-border: var(--glass-border);
+      --focus-outline-color: var(--accent); 
+      --active-filter-bg: var(--accent);
+      
+      color:var(--text-color);
+    }
+    
+    /* ------------------------------------------------------------------- */
+    /* 2. General Styles and Layout */
+    /* ------------------------------------------------------------------- */
+    body{background:var(--bg);color:var(--text-color);font-family:var(--font);margin:0;padding:0;display:flex;justify-content:center;padding:14px;transition:background .2s,color .2s}
+    .wrap{width:100%;max-width:920px;padding:12px;display:flex;flex-direction:column;gap:var(--gap)}
+    
+    .topbar, .balance-card, .filter-card, .records, .modal{
+        background:var(--panel);
+        border:1px solid var(--glass-border);
+        border-radius:6px;
+        box-shadow: none;
+    }
 
-    .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
-    .brand{font-weight:700}
-    .controls{display:flex;gap:8px;align-items:center}
-    details.menu{position:relative}
-    details summary{cursor:pointer;padding:2px 6px}
-    details .dropdown{position:absolute;right:0;top:28px;background:var(--panel);color:inherit;border-radius:6px;padding:6px;border:1px solid var(--glass-border)}
-    details .dropdown button{display:block;width:100%;text-align:left;padding:6px;border:none;background:transparent;color:inherit;cursor:pointer}
-    details .dropdown button#btn-reset {
-        color: var(--danger);
-        font-weight: 700;
-        border-top: 1px solid var(--glass-border);
-        margin-top: 4px;
-        padding-top: 8px;
-    }
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
+    .brand{font-weight:700}
+    .controls{display:flex;gap:8px;align-items:center}
+    details.menu{position:relative}
+    details summary{cursor:pointer;padding:2px 6px}
+    details .dropdown{position:absolute;right:0;top:28px;background:var(--panel);color:inherit;border-radius:6px;padding:6px;border:1px solid var(--glass-border)}
+    details .dropdown button{display:block;width:100%;text-align:left;padding:6px;border:none;background:transparent;color:inherit;cursor:pointer}
+    details .dropdown button#btn-reset {
+        color: var(--danger);
+        font-weight: 700;
+        border-top: 1px solid var(--glass-border);
+        margin-top: 4px;
+        padding-top: 8px;
+    }
 
-    .balance-card{padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center}
-    .balance-left .big{font-size:18px;font-weight:800;color:var(--accent)}
-    .summary-item{font-size:13px}
-    .actions{display:flex;flex-direction:column;gap:8px}
+    .balance-card{padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .balance-left .big{font-size:18px;font-weight:800;color:var(--accent)}
+    .summary-item{font-size:13px}
+    .actions{display:flex;flex-direction:column;gap:8px}
 
-    /* Button Styles */
-    .big-btn{width:100%;padding:10px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:14px}
-    .big-btn.income{background:var(--success);color:#fff}
-    .big-btn.loan{background:var(--warning);color:#111}
-    .big-btn.expense{background:var(--danger);color:#fff}
+    /* Button Styles */
+    .big-btn{width:100%;padding:10px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:14px}
+    .big-btn.income{background:var(--success);color:#fff}
+    .big-btn.loan{background:var(--warning);color:#111}
+    .big-btn.expense{background:var(--danger);color:#fff}
 
-    .filter-card{padding:10px}
-    .filter-row{display:flex;flex-direction:column;gap:6px}
-    
-    /* Input/Select Styles & FOCUS FIX */
-    input,select{
-        width:100%;padding:8px;border-radius:6px;
-        border:1px solid var(--input-border);
-        background:var(--input-bg); 
-        color:var(--text-color); 
-        box-sizing: border-box; 
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    input:focus, select:focus, button:focus{
-        outline: none;
-        border-color: var(--focus-outline-color);
-        box-shadow: 0 0 0 2px var(--focus-outline-color);
-    }
-    /* Disabled state style */
-    select:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
+    .filter-card{padding:10px}
+    .filter-row{display:flex;flex-direction:column;gap:6px}
+    
+    /* Input/Select Styles & FOCUS FIX */
+    input,select{
+        width:100%;padding:8px;border-radius:6px;
+        border:1px solid var(--input-border);
+        background:var(--input-bg); 
+        color:var(--text-color); 
+        box-sizing: border-box; 
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, button:focus{
+        outline: none;
+        border-color: var(--focus-outline-color);
+        box-shadow: 0 0 0 2px var(--focus-outline-color);
+    }
+    /* Disabled state style */
+    select:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
 
-    /* Date Picker Fixes (Calendar Icon & Text) */
-    input[type="date"]::-webkit-datetime-edit-text,
-    input[type="date"]::-webkit-datetime-edit-month-field,
-    input[type="date"]::-webkit-datetime-edit-day-field,
-    input[type="date"]::-webkit-datetime-edit-year-field,
-    input[type="date"]::-webkit-datetime-edit-literal { 
-        color: var(--text-color);
-    }
-    input[type="date"]::-webkit-calendar-picker-indicator {
-        filter: invert(1) brightness(0.9);
-        cursor: pointer;
-    }
-    body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
-        filter: none;
-    }
-    
-    /* ------------------------------------------------------------------- */
-    /* 3. Quick Filter Styles (UX FIX) */
-    /* ------------------------------------------------------------------- */
-    .quick-filters{
-      display:flex;
-      flex-wrap: wrap; 
-      gap:6px;
-      margin-top: 2px; 
-      margin-bottom: 2px; 
-    }
-    .quick-filters button{
-      flex: 1 1 auto; 
-      padding: 6px 8px;
-      border: 1px solid var(--input-border);
-      background: var(--input-bg); 
-      color: var(--text-color);
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-      box-sizing: border-box;
-      transition: background 0.2s;
-    }
-    .quick-filters button:hover{
-      background: var(--glass-border);
-    }
-    .quick-filters button.active {
-        background: var(--active-filter-bg);
-        color: var(--bg);
-        border-color: var(--active-filter-bg);
-        font-weight: 700;
-    }
+    /* Date Picker Fixes (Calendar Icon & Text) */
+    input[type="date"]::-webkit-datetime-edit-text,
+    input[type="date"]::-webkit-datetime-edit-month-field,
+    input[type="date"]::-webkit-datetime-edit-day-field,
+    input[type="date"]::-webkit-datetime-edit-year-field,
+    input[type="date"]::-webkit-datetime-edit-literal { 
+        color: var(--text-color);
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1) brightness(0.9);
+        cursor: pointer;
+    }
+    body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: none;
+    }
+    
+    /* ------------------------------------------------------------------- */
+    /* 3. Quick Filter Styles (UX FIX) */
+    /* ------------------------------------------------------------------- */
+    .quick-filters{
+      display:flex;
+      flex-wrap: wrap; 
+      gap:6px;
+      margin-top: 2px; 
+      margin-bottom: 2px; 
+    }
+    .quick-filters button{
+      flex: 1 1 auto; 
+      padding: 6px 8px;
+      border: 1px solid var(--input-border);
+      background: var(--input-bg); 
+      color: var(--text-color);
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: background 0.2s;
+    }
+    .quick-filters button:hover{
+      background: var(--glass-border);
+    }
+    .quick-filters button.active {
+        background: var(--active-filter-bg);
+        color: var(--bg);
+        border-color: var(--active-filter-bg);
+        font-weight: 700;
+    }
 
-    /* ------------------------------------------------------------------- */
-    /* 4. Records & Sorting Styles (FEATURE FIX) */
-    /* ------------------------------------------------------------------- */
-    .records{overflow:hidden}
-    .records-head{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;font-weight:700;background:rgba(255,255,255,0.08);border-bottom:1px solid var(--glass-border)}
-    
-    .records-head > div {
-        cursor: pointer;
-        padding-right: 15px;
-        position: relative;
-    }
-    .records-head > div:hover {
-        opacity: 0.8;
-    }
-    .records-head > div[data-sort-order]::after {
-        content: ' ';
-        position: absolute;
-        right: 0px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 10px;
-    }
-    .records-head > div[data-sort-order="asc"]::after {
-        content: '▲';
-    }
-    .records-head > div[data-sort-order="desc"]::after {
-        content: '▼';
-    }
+    /* ------------------------------------------------------------------- */
+    /* 4. Records & Sorting Styles (FEATURE FIX) */
+    /* ------------------------------------------------------------------- */
+    .records{overflow:hidden}
+    .records-head{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;font-weight:700;background:rgba(255,255,255,0.08);border-bottom:1px solid var(--glass-border)}
+    
+    .records-head > div {
+        cursor: pointer;
+        padding-right: 15px;
+        position: relative;
+    }
+    .records-head > div:hover {
+        opacity: 0.8;
+    }
+    .records-head > div[data-sort-order]::after {
+        content: ' ';
+        position: absolute;
+        right: 0px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 10px;
+    }
+    .records-head > div[data-sort-order="asc"]::after {
+        content: '▲';
+    }
+    .records-head > div[data-sort-order="desc"]::after {
+        content: '▼';
+    }
 
-    .record-row{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;border-bottom:1px solid var(--glass-border);align-items:center}
-    .record-actions button{background:none;border:none;color:var(--text-color);cursor:pointer;transition:color 0.1s}
-    
-    .empty-state {
-        text-align: center;
-        padding: 40px 10px;
-        color: var(--glass-border);
-        font-size: 14px;
-    }
+    .record-row{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;border-bottom:1px solid var(--glass-border);align-items:center}
+    .record-actions button{background:none;border:none;color:var(--text-color);cursor:pointer;transition:color 0.1s}
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 10px;
+        color: var(--glass-border);
+        font-size: 14px;
+    }
 
-    footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
-    
-    /* ------------------------------------------------------------------- */
-    /* 5. Modals and Delete Confirmation (UX FIX) */
-    /* ------------------------------------------------------------------- */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:none;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}
-    .overlay.show{display:flex}
-    .modal{
-        width:100%;max-width:560px;
-        background:var(--panel);
-        border:1px solid var(--glass-border);
-        border-radius:8px;
-        padding:16px;
-        box-shadow:0 6px 15px rgba(0,0,0,0.4);
-    }
-    
-    .delete-modal-content {
-        padding: 10px 0;
-    }
-    .delete-modal-content p {
-        margin: 0 0 12px 0;
-        font-size: 14px;
-    }
-    .delete-modal-content .record-details {
-        background: var(--input-bg);
-        border: 1px solid var(--input-border);
-        padding: 8px;
-        border-radius: 4px;
-        margin-bottom: 15px;
-        font-size: 13px;
-        word-break: break-word;
-    }
-    
-    /* Modal Button Styles */
-    .modal h2{margin:0 0 8px 0;font-size:16px}
-    .modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
-    
-    /* FIX: Input Zoom on iOS - Set font-size to 16px to prevent viewport zoom */
-    .modal input[type="text"],.modal input[type="date"],.modal input[type="number"],.modal select{
-        width:100%;padding:10px;border-radius:6px;
-        border:1px solid var(--input-border);
-        background:var(--input-bg);
-        color:var(--text-color); 
-        box-sizing: border-box; 
-        font-size: 16px; /* <-- THE FIX */
-    }
-    .modal .row-2{display:block;} 
-    .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-    .btn-cancel{background:transparent;border:1px solid var(--glass-border);color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer}
-    .btn-save{padding:8px 12px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
-    .btn-save.income{background:var(--success);color:#fff}
-    .btn-save.loan{background:var(--warning);color:#111}
-    .btn-save.expense{background:var(--danger);color:#fff}
-    .btn-delete-confirm { background: var(--danger); color: #fff; }
-    
-    .log-list{max-height:400px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-top:8px}
-    .log-item{font-size:13px;background:rgba(255,255,255,0.08);padding:8px;border-radius:6px}
-    
-    /* ------------------------------------------------------------------- */
-    /* 6. Media Queries & Scrollbar Fixes (MOBILE FIX APPLIED HERE) */
-    /* ------------------------------------------------------------------- */
-    @media (max-width:860px){.main-grid{grid-template-columns:1fr}}
-    @media (max-width:420px){
-      .balance-card { flex-direction: column; align-items: stretch; }
-      .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-      .quick-filters button { flex: 1 1 48%; }
-      
-      /* FIX: Records Table on Mobile - Show Date, Description, Amount, Action */
-      .records-head, .record-row {
-          /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
-          /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
-          grid-template-columns: 80px 1fr 90px 50px;
-      }
-      
-      /* 1. Hide Account (2nd item) */
-      .records-head div:nth-child(2), .record-row div:nth-child(2) {
-          display: none !important; /* Force hide account column */
-      }
-      
-      /* 2. Ensure Description (3rd item) is fully visible and takes 1fr */
-      /* Since 2nd is hidden, 3rd will take the second column spot (1fr) */
-      .records-head div:nth-child(3), .record-row div:nth-child(3) {
-          /* Added !important to ensure display:block from parent style is overridden */
-          display: flex !important; 
-          align-items: center; 
-          word-break: break-word; 
-          white-space: normal; /* Allow text to wrap */
-      }
-      
-      /* 3. Ensure Amount (4th item) is visible and aligned */
-      .records-head div:nth-child(4), .record-row div:nth-child(4) {
-          display: flex !important;
-          align-items: center; 
-          justify-content: flex-end; /* Align amount to the right */
-      }
+    footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
+    
+    /* ------------------------------------------------------------------- */
+    /* 5. Modals and Delete Confirmation (UX FIX) */
+    /* ------------------------------------------------------------------- */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:none;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}
+    .overlay.show{display:flex}
+    .modal{
+        width:100%;max-width:560px;
+        background:var(--panel);
+        border:1px solid var(--glass-border);
+        border-radius:8px;
+        padding:16px;
+        box-shadow:0 6px 15px rgba(0,0,0,0.4);
+    }
+    
+    .delete-modal-content {
+        padding: 10px 0;
+    }
+    .delete-modal-content p {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+    }
+    .delete-modal-content .record-details {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        font-size: 13px;
+        word-break: break-word;
+    }
+    
+    /* Modal Button Styles */
+    .modal h2{margin:0 0 8px 0;font-size:16px}
+    .modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
+    
+    /* FIX: Input Zoom on iOS - Set font-size to 16px to prevent viewport zoom */
+    .modal input[type="text"],.modal input[type="date"],.modal input[type="number"],.modal select{
+        width:100%;padding:10px;border-radius:6px;
+        border:1px solid var(--input-border);
+        background:var(--input-bg);
+        color:var(--text-color); 
+        box-sizing: border-box; 
+        font-size: 16px; /* <-- THE FIX */
+    }
+    .modal .row-2{display:block;} 
+    .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+    .btn-cancel{background:transparent;border:1px solid var(--glass-border);color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer}
+    .btn-save{padding:8px 12px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
+    .btn-save.income{background:var(--success);color:#fff}
+    .btn-save.loan{background:var(--warning);color:#111}
+    .btn-save.expense{background:var(--danger);color:#fff}
+    .btn-delete-confirm { background: var(--danger); color: #fff; }
+    
+    .log-list{max-height:400px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-top:8px}
+    .log-item{font-size:13px;background:rgba(255,255,255,0.08);padding:8px;border-radius:6px}
+    
+    /* ------------------------------------------------------------------- */
+    /* 6. Media Queries & Scrollbar Fixes (MOBILE FIX APPLIED HERE) */
+    /* ------------------------------------------------------------------- */
+    @media (max-width:860px){.main-grid{grid-template-columns:1fr}}
+    @media (max-width:420px){
+      .balance-card { flex-direction: column; align-items: stretch; }
+      .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+      .quick-filters button { flex: 1 1 48%; }
+      
+      /* FIX: Records Table on Mobile - Show Date, Description, Amount, Action */
+      .records-head, .record-row {
+          /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
+          /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
+          grid-template-columns: 80px 1fr 90px 50px;
+      }
+      
+      /* 1. Hide Account (2nd item) */
+      .records-head div:nth-child(2), .record-row div:nth-child(2) {
+          display: none; 
+      }
+      
+      /* 2. Ensure Description (3rd item) is fully visible and takes 1fr */
+      .records-head div:nth-child(3), .record-row div:nth-child(3) {
+          align-items: center; 
+          word-break: break-word; 
+          white-space: normal;
+      }
+      
+      /* 3. Ensure Amount (4th item) is visible and aligned */
+      .records-head div:nth-child(4), .record-row div:nth-child(4) {
+          align-items: center;
+          justify-content: flex-end; /* Align amount to the right */
+      }
 
-      /* 4. Ensure Action (5th item) is visible and centered */
-      .records-head div:nth-child(5), .record-row div:nth-child(5) {
-          display: flex !important; 
-          align-items: center; 
-          justify-content: center;
-      }
-      
-      /* 5. Ensure Date (1st item) is visible and aligned */
-      .records-head div:nth-child(1), .record-row div:nth-child(1) {
-          display: flex !important; 
-          align-items: center; 
-          justify-content: flex-start;
-      }
-    }
-    
-    /* THEME ICON HIGHLIGHT CSS START */
-    .theme-toggle{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width: 40px; 
-      height: 20px;
-      padding: 0;
-      border-radius: 12px;
-      border:1px solid var(--glass-border);
-      cursor:pointer;
-      background:transparent;
-      position: relative;
-      font-size: 14px;
-      overflow: hidden; 
-    }
-    /* Set icon based on current theme */
-    .theme-toggle::before {
-        content: '🌙'; /* Default is Dark Mode, so show Moon (switch to Sun) */
-        color: var(--text-color);
-        position: absolute;
-        transition: transform 0.2s ease-in-out;
-    }
-    body[data-theme="light"] .theme-toggle::before {
-        content: '☀️'; /* Light Mode, so show Sun (switch to Moon) */
-        transform: translateX(0);
-    }
-    /* THEME ICON HIGHLIGHT CSS END */
-    
-    .hidden-file{display:none}
-    
-    .log-list::-webkit-scrollbar, body::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    .log-list::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
-        background: var(--bg);
-    }
-    .log-list::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
-        background: var(--glass-border);
-        border-radius: 4px;
-    }
-    .log-list::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
-        background: var(--muted);
-    }
-    /* ------------------------------------------------------------------- */
-  </style>
+      /* 4. Ensure Action (5th item) is visible and centered */
+      .records-head div:nth-child(5), .record-row div:nth-child(5) {
+          align-items: center;
+          justify-content: center;
+      }
+      
+      /* 5. Ensure Date (1st item) is visible and aligned */
+      .records-head div:nth-child(1), .record-row div:nth-child(1) {
+          align-items: center;
+          justify-content: flex-start;
+      }
+    }
+    
+    /* THEME ICON HIGHLIGHT CSS START */
+    .theme-toggle{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width: 40px; 
+      height: 20px;
+      padding: 0;
+      border-radius: 12px;
+      border:1px solid var(--glass-border);
+      cursor:pointer;
+      background:transparent;
+      position: relative;
+      font-size: 14px;
+      overflow: hidden; 
+    }
+    /* Set icon based on current theme */
+    .theme-toggle::before {
+        content: '🌙'; /* Default is Dark Mode, so show Moon (switch to Sun) */
+        color: var(--text-color);
+        position: absolute;
+        transition: transform 0.2s ease-in-out;
+    }
+    body[data-theme="light"] .theme-toggle::before {
+        content: '☀️'; /* Light Mode, so show Sun (switch to Moon) */
+        transform: translateX(0);
+    }
+    /* THEME ICON HIGHLIGHT CSS END */
+    
+    .hidden-file{display:none}
+    
+    .log-list::-webkit-scrollbar, body::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    .log-list::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+    .log-list::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
+        background: var(--glass-border);
+        border-radius: 4px;
+    }
+    .log-list::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+    }
+    /* ------------------------------------------------------------------- */
+  </style>
 </head>
 <body>
-  <div class="wrap" id="app">
-    <div class="topbar">
-      <div class="brand">HomeLedger</div>
-      <div class="controls">
-        <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
-        <details class="menu">
-          <summary>⋮</summary>
-          <div class="dropdown">
-            <button id="btn-log">📜 View Activity Log</button>
-            <button id="btn-reset">⚠️ Delete All Data</button>
-            <button id="btn-backup">Backup</button>
-            <button id="btn-restore">Restore</button>
-            <button id="btn-export">Export CSV</button>
-          </div>
-        </details>
-      </div>
-    </div>
+  <div class="wrap" id="app">
+    <div class="topbar">
+      <div class="brand">HomeLedger</div>
+      <div class="controls">
+        <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
+        <details class="menu">
+          <summary>⋮</summary>
+          <div class="dropdown">
+            <button id="btn-log">📜 View Activity Log</button>
+            <button id="btn-reset">⚠️ Delete All Data</button>
+            <button id="btn-backup">Backup</button>
+            <button id="btn-restore">Restore</button>
+            <button id="btn-export">Export CSV</button>
+          </div>
+        </details>
+      </div>
+    </div>
 
-    <div class="main-grid">
-      <div class="left-col">
+    <div class="main-grid">
+      <div class="left-col">
 
-        <div class="balance-card" id="balance-card">
-          <div class="balance-left">
-            <div style="font-size:13px;color:var(--muted)">Current Balance (Total)</div>
-            <div class="big" id="current-balance">Rs 0</div>
-            <div class="summary-item" style="color:var(--accent)">Filtered: <span id="summary-filtered-balance">Rs 0</span></div>
-          </div>
-          <div class="balance-right" style="display:flex;gap:12px;align-items:center">
-            <div class="summary-item"><strong>Income:</strong> <span id="sum-income" style="color:var(--success);font-weight:700">Rs 0</span></div>
-            <div class="summary-item"><strong>Loan:</strong> <span id="sum-loan" style="color:var(--warning);font-weight:700">Rs 0</span></div>
-            <div class="summary-item"><strong>Expense:</strong> <span id="sum-expense" style="color:var(--danger);font-weight:700">Rs 0</span></div>
-          </div>
-        </div>
+        <div class="balance-card" id="balance-card">
+          <div class="balance-left">
+            <div style="font-size:13px;color:var(--muted)">Current Balance (Total)</div>
+            <div class="big" id="current-balance">Rs 0</div>
+            <div class="summary-item" style="color:var(--accent)">Filtered: <span id="summary-filtered-balance">Rs 0</span></div>
+          </div>
+          <div class="balance-right" style="display:flex;gap:12px;align-items:center">
+            <div class="summary-item"><strong>Income:</strong> <span id="sum-income" style="color:var(--success);font-weight:700">Rs 0</span></div>
+            <div class="summary-item"><strong>Loan:</strong> <span id="sum-loan" style="color:var(--warning);font-weight:700">Rs 0</span></div>
+            <div class="summary-item"><strong>Expense:</strong> <span id="sum-expense" style="color:var(--danger);font-weight:700">Rs 0</span></div>
+          </div>
+        </div>
 
-        <div class="actions" style="margin-top:10px">
-          <button class="big-btn income" data-action="income">+ Add Income</button>
-          <button class="big-btn loan" data-action="loan">+ Add Loan</button>
-          <button class="big-btn expense" data-action="expense">+ Add Expense</button>
-        </div>
+        <div class="actions" style="margin-top:10px">
+          <button class="big-btn income" data-action="income">+ Add Income</button>
+          <button class="big-btn loan" data-action="loan">+ Add Loan</button>
+          <button class="big-btn expense" data-action="expense">+ Add Expense</button>
+        </div>
 
-        <div class="filter-card" style="margin-top:10px">
-          <strong>Filter Records</strong>
-          
-          <div class="filter-row">
-            <input id="filter-search" type="text" placeholder="Search by description or amount">
-            
-            <select id="filter-account">
-              <option>All Accounts</option>
-              <option>Income</option>
-              <option>Loan</option>
-              <option>Expense</option>
-            </select>
+        <div class="filter-card" style="margin-top:10px">
+          <strong>Filter Records</strong>
+          
+          <div class="filter-row">
+            <input id="filter-search" type="text" placeholder="Search by description or amount">
+            
+            <select id="filter-account">
+              <option>All Accounts</option>
+              <option>Income</option>
+              <option>Loan</option>
+              <option>Expense</option>
+            </select>
 
-            <div class="quick-filters">
-              <button id="quick-today">Today</button>
-              <button id="quick-yesterday">Yesterday</button>
-              <button id="quick-month">Current Month</button>
-              <button id="quick-fiscal">Fiscal Year</button>
-            </div>
+            <div class="quick-filters">
+              <button id="quick-today">Today</button>
+              <button id="quick-yesterday">Yesterday</button>
+              <button id="quick-month">Current Month</button>
+              <button id="quick-fiscal">Fiscal Year</button>
+            </div>
 
-            <div style="display:flex;gap:8px">
-              <input id="filter-from" type="date">
-              <input id="filter-to" type="date">
-            </div>
-          </div>
-        </div>
+            <div style="display:flex;gap:8px">
+              <input id="filter-from" type="date">
+              <input id="filter-to" type="date">
+            </div>
+          </div>
+        </div>
 
-        <section class="records" id="records-section" style="margin-top:10px">
-          <div class="records-head">
-            <div data-sort-key="date" data-sort-order="desc">Date</div>
-            <div data-sort-key="account">Account</div>
-            <div>Description</div>
-            <div data-sort-key="amount">Amount</div>
-            <div>Action</div>
-          </div>
-          </section>
+        <section class="records" id="records-section" style="margin-top:10px">
+          <div class="records-head">
+            <div data-sort-key="date" data-sort-order="desc">Date</div>
+            <div data-sort-key="account">Account</div>
+            <div>Description</div>
+            <div data-sort-key="amount">Amount</div>
+            <div>Action</div>
+          </div>
+          </section>
 
-      </div>
-    </div>
+      </div>
+    </div>
 
-    <footer>HomeLedger v1.5.2</footer> 
-  </div>
+    <footer>HomeLedger v1.5.2</footer> 
+  </div>
 
-  <div class="overlay" id="log-overlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <h2>📜 Activity Log</h2>
-      <div id="activity-log-modal" class="log-list"></div>
-      <div class="actions-row" style="margin-top:8px">
-        <button class="btn-cancel" id="log-close">Close</button>
-      </div>
-    </div>
-  </div>
+  <div class="overlay" id="log-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>📜 Activity Log</h2>
+      <div id="activity-log-modal" class="log-list"></div>
+      <div class="actions-row" style="margin-top:8px">
+        <button class="btn-cancel" id="log-close">Close</button>
+      </div>
+    </div>
+  </div>
 
-  <div class="overlay" id="modal-overlay" role="dialog" aria-hidden="true">
-    <div class="modal" role="document" aria-modal="true">
-      <h2 id="modal-title">Add New Entry</h2>
-      <div>
-        <label for="entry-date">Date</label>
-        <input id="entry-date" type="date" required/>
-      </div>
-      <div style="margin-top:8px">
-        <label for="entry-account">Account</label>
-        <select id="entry-account">
-          <option>Income</option>
-          <option>Loan</option>
-          <option>Expense</option>
-        </select>
-      </div>
-      <div style="margin-top:8px">
-        <label for="entry-desc">Description</label>
-        <input id="entry-desc" type="text" placeholder="e.g. Salary, Fuel, Phone bill" required/>
-      </div>
-      <div class="row-2" style="margin-top:8px">
-        <div>
-          <label for="entry-amount">Amount</label>
-          <input id="entry-amount" type="number" min="0.01" step="any" placeholder="0" required/>
-        </div>
-      </div>
-      <div class="actions-row">
-        <button class="btn-cancel" id="modal-cancel">Cancel</button>
-        <button class="btn-save" id="modal-save">Save</button>
-      </div>
-    </div>
-  </div>
-  
-  <div class="overlay" id="delete-overlay" role="dialog" aria-hidden="true">
-    <div class="modal" role="document" aria-modal="true">
-      <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
-      <div class="delete-modal-content">
-        <p>Are you sure you want to permanently delete the following record?</p>
-        <div class="record-details" id="delete-record-details"></div>
-      </div>
-      <div class="actions-row">
-        <button class="btn-cancel" id="delete-cancel">Cancel</button>
-        <button class="btn-save btn-delete-confirm" id="delete-confirm-btn" data-id="">Delete</button>
-      </div>
-      </div>
-  </div>
+  <div class="overlay" id="modal-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 id="modal-title">Add New Entry</h2>
+      <div>
+        <label for="entry-date">Date</label>
+        <input id="entry-date" type="date" required/>
+      </div>
+      <div style="margin-top:8px">
+        <label for="entry-account">Account</label>
+        <select id="entry-account">
+          <option>Income</option>
+          <option>Loan</option>
+          <option>Expense</option>
+        </select>
+      </div>
+      <div style="margin-top:8px">
+        <label for="entry-desc">Description</label>
+        <input id="entry-desc" type="text" placeholder="e.g. Salary, Fuel, Phone bill" required/>
+      </div>
+      <div class="row-2" style="margin-top:8px">
+        <div>
+          <label for="entry-amount">Amount</label>
+          <input id="entry-amount" type="number" min="0.01" step="any" placeholder="0" required/>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="overlay" id="delete-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
+      <div class="delete-modal-content">
+        <p>Are you sure you want to permanently delete the following record?</p>
+        <div class="record-details" id="delete-record-details"></div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="delete-cancel">Cancel</button>
+        <button class="btn-save btn-delete-confirm" id="delete-confirm-btn" data-id="">Delete</button>
+      </div>
+      </div>
+  </div>
 
-  <div class="overlay" id="reset-overlay" role="dialog" aria-hidden="true">
-    <div class="modal" role="document" aria-modal="true">
-      <h2 style="color:var(--danger)">⚠️ Confirm Full Reset</h2>
-      <div class="delete-modal-content">
-        <p><strong>This action cannot be undone.</strong> All your financial records, activity logs, and settings will be permanently deleted and the app will restart empty.</p>
-        <p>We recommend you create a **Backup (JSON)** before proceeding.</p>
-      </div>
-      <div class="actions-row">
-        <button class="btn-cancel" id="reset-cancel">Cancel</button>
-        <button class="btn-save btn-delete-confirm" id="reset-confirm-btn">Yes, Delete All Data</button>
-      </div>
-    </div>
-  </div>
+  <div class="overlay" id="reset-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 style="color:var(--danger)">⚠️ Confirm Full Reset</h2>
+      <div class="delete-modal-content">
+        <p><strong>This action cannot be undone.</strong> All your financial records, activity logs, and settings will be permanently deleted and the app will restart empty.</p>
+        <p>We recommend you create a **Backup (JSON)** before proceeding.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="reset-cancel">Cancel</button>
+        <button class="btn-save btn-delete-confirm" id="reset-confirm-btn">Yes, Delete All Data</button>
+      </div>
+    </div>
+  </div>
 
 
-  <input id="restore-file" class="hidden-file" type="file" accept="application/json" />
+  <input id="restore-file" class="hidden-file" type="file" accept="application/json" />
 
-  <script>
-    (function(){
-      // -------------------------------------------------------------------
-      // 1. DOM References and Constants
-      // -------------------------------------------------------------------
-      const overlay = document.getElementById('modal-overlay');
-      const deleteOverlay = document.getElementById('delete-overlay');
-      const deleteCancelBtn = document.getElementById('delete-cancel');
-      const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
-      const deleteDetailsDiv = document.getElementById('delete-record-details');
-      const resetOverlay = document.getElementById('reset-overlay'); 
-      const resetCancelBtn = document.getElementById('reset-cancel'); 
-      const resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
-      const title = document.getElementById('modal-title');
-      const accountSelect = document.getElementById('entry-account');
-      const saveBtn = document.getElementById('modal-save');
-      const cancelBtn = document.getElementById('modal-cancel');
-      const dateInput = document.getElementById('entry-date');
-      const descInput = document.getElementById('entry-desc');
-      const amtInput = document.getElementById('entry-amount');
-      const recordsSection = document.getElementById('records-section');
-      const recordsHead = recordsSection.querySelector('.records-head');
-      const logOverlay = document.getElementById('log-overlay');
-      const logClose = document.getElementById('log-close');
-      const btnLog = document.getElementById('btn-log');
-      const btnReset = document.getElementById('btn-reset');
-      const filterSearch = document.getElementById('filter-search');
-      const filterAccount = document.getElementById('filter-account');
-      const filterFrom = document.getElementById('filter-from');
-      const filterTo = document.getElementById('filter-to');
-      const btnBackup = document.getElementById('btn-backup');
-      const btnRestore = document.getElementById('btn-restore');
-      const btnExport = document.getElementById('btn-export');
-      const themeToggle = document.getElementById('theme-toggle'); 
-      const restoreFileInput = document.getElementById('restore-file');
-      
-      const quickFilterButtons = {
-          today: document.getElementById('quick-today'),
-          yesterday: document.getElementById('quick-yesterday'),
-          month: document.getElementById('quick-month'),
-          fiscal: document.getElementById('quick-fiscal')
-      };
+  <script>
+    (function(){
+      // -------------------------------------------------------------------
+      // 1. DOM References and Constants
+      // -------------------------------------------------------------------
+      const overlay = document.getElementById('modal-overlay');
+      const deleteOverlay = document.getElementById('delete-overlay');
+      const deleteCancelBtn = document.getElementById('delete-cancel');
+      const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+      const deleteDetailsDiv = document.getElementById('delete-record-details');
+      const resetOverlay = document.getElementById('reset-overlay'); 
+      const resetCancelBtn = document.getElementById('reset-cancel'); 
+      const resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
+      const title = document.getElementById('modal-title');
+      const accountSelect = document.getElementById('entry-account');
+      const saveBtn = document.getElementById('modal-save');
+      const cancelBtn = document.getElementById('modal-cancel');
+      const dateInput = document.getElementById('entry-date');
+      const descInput = document.getElementById('entry-desc');
+      const amtInput = document.getElementById('entry-amount');
+      const recordsSection = document.getElementById('records-section');
+      const recordsHead = recordsSection.querySelector('.records-head');
+      const logOverlay = document.getElementById('log-overlay');
+      const logClose = document.getElementById('log-close');
+      const btnLog = document.getElementById('btn-log');
+      const btnReset = document.getElementById('btn-reset');
+      const filterSearch = document.getElementById('filter-search');
+      const filterAccount = document.getElementById('filter-account');
+      const filterFrom = document.getElementById('filter-from');
+      const filterTo = document.getElementById('filter-to');
+      const btnBackup = document.getElementById('btn-backup');
+      const btnRestore = document.getElementById('btn-restore');
+      const btnExport = document.getElementById('btn-export');
+      const themeToggle = document.getElementById('theme-toggle'); 
+      const restoreFileInput = document.getElementById('restore-file');
+      
+      const quickFilterButtons = {
+          today: document.getElementById('quick-today'),
+          yesterday: document.getElementById('quick-yesterday'),
+          month: document.getElementById('quick-month'),
+          fiscal: document.getElementById('quick-fiscal')
+      };
 
-      const STORAGE_KEY = 'homeledger_v1_data_v1';
-      const THEME_KEY = 'homeledger_theme_v1';
-      const SORT_KEY = 'homeledger_sort_v1';
-      const VERSION_TAG = 'HomeLedger v1.5.2'; 
-      let store = { records: [], logs: [] };
-      let currentSort = { key: 'date', order: 'desc' };
+      const STORAGE_KEY = 'homeledger_v1_data_v1';
+      const THEME_KEY = 'homeledger_theme_v1';
+      const SORT_KEY = 'homeledger_sort_v1';
+      const VERSION_TAG = 'HomeLedger v1.5.2'; 
+      let store = { records: [], logs: [] };
+      let currentSort = { key: 'date', order: 'desc' };
 
 
       // -------------------------------------------------------------------
@@ -582,14 +576,12 @@
               id: record.guid,
               date: record.date,
               description: record.desc, // Use 'desc' property from your existing record structure
-              amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), // Ensure amount has +/- sign for sheets
+              // FIX APPLIED HERE: Use negative sign for 'expense' records
+              amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
               account: record.account || 'N/A',
               status: recordStatus // 'Active' or 'Deleted'
           };
           
-          // FIX: Your original code structure uses .desc and .amount,
-          // so we ensure correct conversion for 'amount' sign based on 'sign' property.
-
           try {
               const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                   method: 'POST',
@@ -610,364 +602,600 @@
       // -------------------------------------------------------------------
 
 
-      // -------------------------------------------------------------------
-      // 3. Helper Functions (Renumbered)
-      // -------------------------------------------------------------------
-      function pad(n){ return String(n).padStart(2,'0'); }
-      function nowTsForLog(){
-        const d = new Date();
-        return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      }
-      function formatAmount(n,sign){
-        return (sign==='positive'?'+ ':'- ') + 'Rs ' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      }
-      function isoFormat(d){
-          const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-          return `${y}-${m}-${dd}`;
-      }
-      function isoToday(){
-        const d = new Date();
-        return isoFormat(d);
-      }
-      function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
-      
-      function getFiscalYearDates(){
-          const d = new Date();
-          const year = d.getFullYear();
-          const month = d.getMonth(); 
-          let startYear, endYear;
-          if (month >= 6) { startYear = year; endYear = year + 1; } 
-          else { startYear = year - 1; endYear = year; }
-          const fromDate = new Date(startYear, 6, 1); 
-          const toDate = new Date(endYear, 5, 30);   
-          return { from: isoFormat(fromDate), to: isoFormat(toDate) };
-      }
-      
-      // FIX: seedSampleData function now returns an empty array 
-      function seedSampleData() {
-          return []; // Returns an empty array to ensure no data is ever seeded automatically
-      }
-      // -------------------------------------------------------------------
-      // 4. Persistence & Theme (Renumbered)
-      // -------------------------------------------------------------------
-      function saveToStorage(){
-        try{ 
-            // Only save the main storage key if there are records or logs.
-            if (store.records.length > 0 || store.logs.length > 0) {
-                 localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-            } else {
-                 // FIX: Ensure the STORAGE_KEY is explicitly removed if records are empty
-                 localStorage.removeItem(STORAGE_KEY);
-            }
-            // Save settings keys regardless
-            localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
-        }catch(e){}
-      }
-      function loadFromStorage(){
-        try{
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if(raw){ 
-              const parsed = JSON.parse(raw); 
-              if(parsed.records) store.records = parsed.records; 
-              if(parsed.logs) store.logs = parsed.logs; 
-          }
-          const rawSort = localStorage.getItem(SORT_KEY);
-          if(rawSort) currentSort = JSON.parse(rawSort);
+      // -------------------------------------------------------------------
+      // 3. Helper Functions (Renumbered)
+      // -------------------------------------------------------------------
+      function pad(n){ return String(n).padStart(2,'0'); }
+      function nowTsForLog(){
+        const d = new Date();
+        return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+      function formatAmount(n,sign){
+        return (sign==='positive'?'Rs ':'Rs ') + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      function isoFormat(d){
+          const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+          return `${y}-${m}-${dd}`;
+      }
+      function isoToday(){
+        const d = new Date();
+        return isoFormat(d);
+      }
+      function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+      
+      function getFiscalYearDates(){
+          const d = new Date();
+          const year = d.getFullYear();
+          const month = d.getMonth(); 
+          let startYear, endYear;
+          // Assuming fiscal year starts on July 1st (Pakistan/India)
+          if (month >= 6) { startYear = year; endYear = year + 1; } 
+          else { startYear = year - 1; endYear = year; }
+          const fromDate = new Date(startYear, 6, 1); 
+          const toDate = new Date(endYear, 5, 30);   
+          return { from: isoFormat(fromDate), to: isoFormat(toDate) };
+      }
+      
+      // FIX: seedSampleData function now returns an empty array  
+      function seedSampleData() {
+          return []; // Returns an empty array to ensure no data is ever seeded automatically
+      }
+      // -------------------------------------------------------------------
+      // 4. Persistence & Theme (Renumbered)
+      // -------------------------------------------------------------------
+      function saveToStorage(){
+        try{ 
+            // Only save the main storage key if there are records or logs.
+            if (store.records.length > 0 || store.logs.length > 0) {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+            } else {
+                  // FIX: Ensure the STORAGE_KEY is explicitly removed if records are empty
+                  localStorage.removeItem(STORAGE_KEY);
+            }
+            // Save settings keys regardless
+            localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
+        }catch(e){}
+      }
+      function loadFromStorage(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(raw){ 
+              const parsed = JSON.parse(raw); 
+              if(parsed.records) store.records = parsed.records; 
+              if(parsed.logs) store.logs = parsed.logs; 
+          }
+          const rawSort = localStorage.getItem(SORT_KEY);
+          if(rawSort) currentSort = JSON.parse(rawSort);
 
-        }catch(e){}
-      }
-      
-      function applyTheme(theme){
-        if(theme === 'light') {
-            document.body.setAttribute('data-theme','light');
-            themeToggle.title = 'Switch to Dark Mode';
-            themeToggle.textContent = ''; 
-        }
-        else {
-            document.body.removeAttribute('data-theme');
-            themeToggle.title = 'Switch to Light Mode';
-            themeToggle.textContent = ''; 
-        }
-        try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
-      }
-      
-      function toggleTheme(){
-        const cur = localStorage.getItem(THEME_KEY) || 'dark';
-        const next = (cur === 'dark') ? 'light' : 'dark';
-        applyTheme(next);
-        addLog(`[${nowTsForLog()}] Theme changed to ${next}`);
-      }
+        }catch(e){}
+      }
+      
+      function applyTheme(theme){
+        if(theme === 'light') {
+            document.body.setAttribute('data-theme','light');
+            themeToggle.title = 'Switch to Dark Mode';
+            themeToggle.textContent = ''; 
+        }
+        else {
+            document.body.removeAttribute('data-theme');
+            themeToggle.title = 'Switch to Light Mode';
+            themeToggle.textContent = ''; 
+        }
+        try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+      }
+      
+      function toggleTheme(){
+        const cur = localStorage.getItem(THEME_KEY) || 'dark';
+        const next = (cur === 'dark') ? 'light' : 'dark';
+        applyTheme(next);
+        addLog(`[${nowTsForLog()}] Theme changed to ${next}`);
+      }
 
-      // -------------------------------------------------------------------
-      // 5. Rendering, Logging, and Summary (Renumbered)
-      // -------------------------------------------------------------------
-      function renderRecords(list){
-        Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
-        const rows = (list && Array.isArray(list)) ? list : [];
-        
-        if (rows.length === 0) {
-            const emptyDiv = document.createElement('div');
-            emptyDiv.className = 'empty-state';
-            // Custom message if filters are active, otherwise the standard startup message
-            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
-                                    ? "No records found matching your current filters."
-                                    : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
-            recordsSection.appendChild(emptyDiv);
-            recalcFilteredSummary(rows);
-            return;
-        }
+      // -------------------------------------------------------------------
+      // 5. Rendering, Logging, and Summary (Renumbered)
+      // -------------------------------------------------------------------
+      function renderRecords(list){
+        Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
+        const rows = (list && Array.isArray(list)) ? list : [];
+        
+        if (rows.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            // Custom message if filters are active, otherwise the standard startup message
+            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
+                                    ? "No records found matching your current filters."
+                                    : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
+            recordsSection.appendChild(emptyDiv);
+            recalcFilteredSummary(rows);
+            return;
+        }
 
-        rows.forEach(rec=>{
-          const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.guid; // Use rec.guid
-          row.innerHTML = `
-            <div>${rec.date}</div>
-            <div>${rec.account}</div>
-            <div>${rec.desc}</div>
-            <div>${formatAmount(rec.amount,rec.sign)}</div>
-            <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
-          `;
-          row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.guid)); // Use rec.guid
-          row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid)); // Use rec.guid
-          recordsSection.appendChild(row);
-        });
-        recalcFilteredSummary(rows);
-      }
+        rows.forEach(rec=>{
+          const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.guid; // Use rec.guid
+          
+          // Determine color for the amount display (for user visibility)
+          let amountColor;
+          if(rec.sign === 'expense') amountColor = `color:var(--danger);font-weight:700`;
+          else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
+          else amountColor = `color:var(--success);font-weight:700`;
 
-      function renderLogs(){
-        const logModalList = document.getElementById('activity-log-modal');
-        logModalList.innerHTML = '';
-        store.logs.forEach(entry=>{
-          const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
-          logModalList.appendChild(div);
-        });
-      }
-      
-      function addLog(entry){
-        store.logs.unshift(entry);
-        if(store.logs.length>500) store.logs.length = 500;
-        renderLogs();
-        saveToStorage();
-      }
 
-      function recalcGrandTotal(){
-          let income = 0, loan = 0, expense = 0;
-          store.records.forEach(r=>{
-              // Ensure r.amount is treated as a number
-              const amount = Number(r.amount || 0);
-              if(r.account === 'Income') income += amount;
-              else if(r.account === 'Loan') loan += amount;
-              else if(r.account === 'Expense') expense += amount;
-          });
-          const grandBalance = (income + loan) - expense;
-          document.getElementById('current-balance').textContent = 'Rs ' + grandBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      }
+          row.innerHTML = `
+            <div>${rec.date}</div>
+            <div>${rec.account}</div>
+            <div>${rec.desc}</div>
+            <div style="${amountColor}">${formatAmount(rec.amount,rec.sign)}</div>
+            <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
+          `;
+          row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.guid)); // Use rec.guid
+          row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid)); // Use rec.guid
+          recordsSection.appendChild(row);
+        });
+        recalcFilteredSummary(rows);
+      }
 
-      function recalcFilteredSummary(filteredRecords){
-        let income = 0, loan = 0, expense = 0;
-        const list = filteredRecords || []; 
-        list.forEach(r=>{
-            // Ensure r.amount is treated as a number
-            const amount = Number(r.amount || 0);
-            if(r.account === 'Income') income += amount;
-            else if(r.account === 'Loan') loan += amount;
-            else if(r.account === 'Expense') expense += amount;
-        });
-        document.getElementById('sum-income').textContent = 'Rs ' + income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('sum-loan').textContent = 'Rs ' + loan.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        
-        // Display filtered balance: (income + loan) - expense
-        const filteredBalance = (income + loan) - expense;
-        document.getElementById('summary-filtered-balance').textContent = 'Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      }
-      
-      // -------------------------------------------------------------------
-      // 6. Filtering and Sorting Logic (Renumbered)
-      // -------------------------------------------------------------------
-      function getFilteredRecords(){
-        const q = (filterSearch.value || '').trim().toLowerCase();
-        const acc = filterAccount.value || 'All Accounts';
-        const from = filterFrom.value || '';
-        const to = filterTo.value || '';
-        
-        // 1. Filter
-        const filtered = store.records.filter(r=>{
-          const dateOk = (!from || r.date >= from) && (!to || r.date <= to);
-          const accOk = (acc === 'All Accounts') || (r.account === acc);
-          const text = (String(r.desc) + ' ' + String(r.amount)).toLowerCase();
-          const textOk = !q || text.includes(q);
-          return dateOk && accOk && textOk;
-        });
+      function renderLogs(){
+        const logModalList = document.getElementById('activity-log-modal');
+        logModalList.innerHTML = '';
+        store.logs.forEach(entry=>{
+          const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
+          logModalList.appendChild(div);
+        });
+      }
+      
+      function addLog(entry){
+        store.logs.unshift(entry);
+        if(store.logs.length>500) store.logs.length = 500;
+        renderLogs();
+        saveToStorage();
+      }
 
-        // 2. Sort the filtered list
-        return sortRecords(filtered);
-      }
+      function recalcGrandTotal(){
+          let income = 0, loan = 0, expense = 0;
+          store.records.forEach(r=>{
+              // Ensure r.amount is treated as a number
+              const amount = Number(r.amount || 0);
+              if(r.account === 'Income') income += amount;
+              else if(r.account === 'Loan') loan += amount;
+              else if(r.account === 'Expense') expense += amount;
+          });
+          const grandBalance = (income + loan) - expense;
+          document.getElementById('current-balance').textContent = 'Rs ' + grandBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('sum-income').textContent = 'Rs ' + income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('sum-loan').textContent = 'Rs ' + loan.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-      function applyFilter(){
-        const filtered = getFilteredRecords();
-        renderRecords(filtered);
-      }
-      
-      function sortRecords(list) {
-          list.sort((a, b) => {
-              const key = currentSort.key;
-              const order = currentSort.order === 'asc' ? 1 : -1;
-              let valA, valB;
+          // Also trigger filtering to ensure filtered summary is updated too
+          applyFilters();
+          saveToStorage();
+      }
+      
+      function recalcFilteredSummary(filteredList) {
+          let income = 0, loan = 0, expense = 0;
+          filteredList.forEach(r=>{
+              const amount = Number(r.amount || 0);
+              if(r.account === 'Income') income += amount;
+              else if(r.account === 'Loan') loan += amount;
+              else if(r.account === 'Expense') expense += amount;
+          });
+          const filteredBalance = (income + loan) - expense;
+          document.getElementById('summary-filtered-balance').textContent = 'Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      
+      // -------------------------------------------------------------------
+      // 6. Record Management (CRUD)
+      // -------------------------------------------------------------------
+      let editingId = null;
 
-              if (key === 'amount') {
-                  // Sort numbers (treat loan as positive, expense as negative)
-                  valA = a.sign === 'expense' ? -Number(a.amount) : Number(a.amount);
-                  valB = b.sign === 'expense' ? -Number(b.amount) : Number(b.amount);
-              } else if (key === 'date') {
-                  // Sort dates (strings)
-                  valA = a.date;
-                  valB = b.date;
-              } else {
-                  // Sort strings (account)
-                  valA = String(a[key]);
-                  valB = String(b[key]);
-              }
+      function generateGuid() {
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+              var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+              return v.toString(16);
+          });
+      }
 
-              if (valA < valB) return -1 * order;
-              if (valA > valB) return 1 * order;
-              return 0;
-          });
-          return list;
-      }
-      
-      function updateSortUI(){
-        Array.from(recordsHead.children).forEach(h => {
-          const key = h.dataset.sortKey;
-          if (key === currentSort.key) {
-              h.setAttribute('data-sort-order', currentSort.order);
-          } else {
-              h.removeAttribute('data-sort-order');
-          }
-        });
-      }
-      
-      // -------------------------------------------------------------------
-      // 7. Modal & Action Handlers (Renumbered)
-      // -------------------------------------------------------------------
-      
-      // The main modal open handler
-      function openModal(accountType, recordId = null) {
-        // ... (آپ کا موجودہ openModal Logic یہاں ہوگا) ...
-      }
+      function openModal(action) {
+          editingId = null;
+          let account = action.charAt(0).toUpperCase() + action.slice(1);
+          if (account === 'Expense') account = 'Expense';
+          if (account === 'Loan') account = 'Loan';
+          if (account === 'Income') account = 'Income'; 
 
-      function openEdit(guid) {
-        // ... (آپ کا موجودہ openEdit Logic یہاں ہوگا) ...
-      }
-      
-      // The new/edited record SAVE handler (Updated for Sync)
-      function addRecord(event) {
-          event.preventDefault();
-          
-          // 1. Validation and Data Extraction
-          if (!dateInput.value || !descInput.value.trim() || !amtInput.value) {
-              alert('Please fill in all fields (Date, Description, Amount).');
-              return;
-          }
-          const isEdit = saveBtn.dataset.editId;
-          const newAmount = Number(amtInput.value);
-          const accountType = accountSelect.value;
-          const sign = (accountType === 'Expense') ? 'negative' : 'positive';
-          const amountForStorage = (accountType === 'Expense') ? newAmount * -1 : newAmount;
+          title.textContent = `Add New ${account}`;
+          accountSelect.value = account;
+          dateInput.value = isoToday();
+          descInput.value = '';
+          amtInput.value = '';
+          
+          accountSelect.disabled = true; // Lock account type during creation
+          saveBtn.className = 'btn-save ' + action;
+          
+          overlay.classList.add('show');
+          descInput.focus();
+      }
+      
+      function openEdit(guid) {
+          const record = store.records.find(r => r.guid === guid);
+          if (!record) return;
 
-          // 2. Create/Update Record
-          let newRecord = {
-              guid: isEdit || crypto.randomUUID(),
-              date: dateInput.value,
-              desc: descInput.value.trim(),
-              amount: newAmount,
-              rawAmount: amountForStorage, // This is the signed amount for total calculation
-              sign: sign,
-              account: accountType,
-          };
+          editingId = guid;
+          title.textContent = `Edit ${record.account}`;
+          dateInput.value = record.date;
+          accountSelect.value = record.account;
+          descInput.value = record.desc;
+          amtInput.value = record.amount;
+          
+          accountSelect.disabled = false; // Allow changing account type during edit
+          saveBtn.className = 'btn-save ' + record.account.toLowerCase();
 
-          if (isEdit) {
-              const index = store.records.findIndex(r => r.guid === isEdit);
-              if (index > -1) {
-                  store.records[index] = newRecord;
-                  addLog(`[${nowTsForLog()}] EDITED: ${capitalize(accountType)} of Rs ${newAmount} (ID: ${isEdit.substring(0, 8)})`);
-              }
-          } else {
-              store.records.unshift(newRecord);
-              addLog(`[${nowTsForLog()}] ADDED: ${capitalize(accountType)} of Rs ${newAmount} (ID: ${newRecord.guid.substring(0, 8)})`);
-          }
+          overlay.classList.add('show');
+          descInput.focus();
+      }
+      
+      function openDeleteConfirm(guid) {
+          const record = store.records.find(r => r.guid === guid);
+          if (!record) return;
+          
+          deleteConfirmBtn.dataset.id = guid;
+          deleteDetailsDiv.innerHTML = `
+              <strong>Date:</strong> ${record.date}<br>
+              <strong>Account:</strong> ${record.account}<br>
+              <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
+              <strong>Description:</strong> ${record.desc}
+          `;
+          deleteOverlay.classList.add('show');
+      }
 
-          // 3. Local Storage Update
-          store.records.sort(sortFunction);
-          saveToStorage(); 
+      function closeModal() {
+          overlay.classList.remove('show');
+          deleteOverlay.classList.remove('show');
+          resetOverlay.classList.remove('show');
+          editingId = null;
+          // Clean up focus/active state from menu dropdown
+          document.querySelector('details.menu').open = false; 
+      }
 
-          // 4. *** GOOGLE SHEETS SYNC ***
-          // اگر Edit ہو تو بھی ایک نیا ریکارڈ 'Active' سٹیٹس کے ساتھ بھیجیں تاکہ Sheets میں تازہ ترین انٹری ہو
-          // (Sheets میں ایک سے زیادہ سطریں ہوں گی، آخری سطر درست ڈیٹا بتائے گی)
-          sendRecordToSheets(newRecord, 'Active'); 
-          // **************************
+      function saveRecord() {
+          if (!dateInput.value || !descInput.value || !amtInput.value) {
+              alert('Please fill in all fields (Date, Description, Amount).');
+              return;
+          }
+          const amount = Number(amtInput.value);
+          if (isNaN(amount) || amount <= 0) {
+              alert('Please enter a valid amount.');
+              return;
+          }
+          const account = accountSelect.value;
+          const sign = (account === 'Expense') ? 'expense' : 'positive';
+          let logAction;
 
-          // 5. UI Cleanup
-          closeModal();
-          applyFilter();
-          recalcGrandTotal();
-          resetModal();
-      }
+          const newRecord = {
+              guid: editingId || generateGuid(),
+              date: dateInput.value,
+              account: account,
+              desc: descInput.value.trim(),
+              amount: amount.toFixed(2), // Store as fixed decimal string
+              sign: sign,
+          };
 
-      // The delete confirmation handler (Updated for Sync)
-      function deleteRecord(guid) {
-          const recordToDelete = store.records.find(r => r.guid === guid);
-          
-          // 1. Local Storage से हटाएँ
-          store.records = store.records.filter(r => r.guid !== guid);
-          saveToStorage(); 
+          if (editingId) {
+              // Edit existing record
+              const index = store.records.findIndex(r => r.guid === editingId);
+              if (index !== -1) {
+                  const oldRecord = store.records[index];
+                  store.records[index] = newRecord;
+                  logAction = `[${nowTsForLog()}] EDITED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} changed to ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
+              }
+          } else {
+              // Add new record
+              store.records.push(newRecord);
+              logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
+          }
+          
+          // Sync with Sheets
+          sendRecordToSheets(newRecord, 'Active');
+          
+          addLog(logAction);
+          recalcGrandTotal();
+          closeModal();
+      }
+      
+      function deleteRecord(guid) {
+          const index = store.records.findIndex(r => r.guid === guid);
+          if (index === -1) return;
 
-          // 2. Activity Log
-          if (recordToDelete) {
-              addLog(`[${nowTsForLog()}] DELETED: ${capitalize(recordToDelete.account)} of Rs ${recordToDelete.amount} (ID: ${recordToDelete.guid.substring(0, 8)})`);
-            
-            // 3. *** GOOGLE SHEETS SYNC: Send Delete Status ***
-            // Sheets میں ریکارڈ کو 'Deleted' کے طور پر مارک کرنے کے لیے بھیجیں
-            sendRecordToSheets(recordToDelete, 'Deleted'); 
-            // ************************************************
-          }
-        
-          // 4. UI Update
-          applyFilter(); // Calls renderRecords
-          recalcGrandTotal();
-          closeDeleteConfirm();
-      }
-      
-      function openDeleteConfirm(guid) {
-        // ... (آپ کا موجودہ openDeleteConfirm Logic یہاں ہوگا) ...
-      }
-      
-      function closeDeleteConfirm() {
-        // ... (آپ کا موجودہ closeDeleteConfirm Logic یہاں ہوگا) ...
-      }
-      
-      function closeModal() {
-        // ... (آپ کا موجودہ closeModal Logic یہاں ہوگا) ...
-      }
-      
-      function resetModal() {
-        // ... (آپ کا موجودہ resetModal Logic یہاں ہوگا) ...
-      }
-      
-      // ... (باقی تمام فنکشنز یہاں ہوں گے: saveBackup, restoreBackup, exportCSV, setupEventListeners, init) ...
-      
-      // -------------------------------------------------------------------
-      // 8. Initialization and Event Listeners (Renumbered)
-      // -------------------------------------------------------------------
-      function setupEventListeners() {
-        // ... (آپ کا موجودہ setupEventListeners Logic یہاں ہوگا) ...
-      }
+          const deletedRecord = store.records.splice(index, 1)[0];
+          
+          // Sync delete with Sheets
+          sendRecordToSheets(deletedRecord, 'Deleted'); 
 
-      function init() {
-        // ... (آپ کا موجودہ init Logic یہاں ہوگا) ...
-      }
+          addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
+          recalcGrandTotal();
+          closeModal();
+      }
+      
+      function deleteAllData() {
+          localStorage.removeItem(STORAGE_KEY);
+          store.records = [];
+          store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`]; // Keep one log entry for the reset action
+          recalcGrandTotal();
+          closeModal();
+          // Force reload to clean all state and restart cleanly
+          location.reload(); 
+      }
 
-      init();
-    })();
-  </script>
+      // -------------------------------------------------------------------
+      // 7. Filtering and Sorting
+      // -------------------------------------------------------------------
+      function applyFilters() {
+          const searchVal = filterSearch.value.toLowerCase();
+          const accountFilter = filterAccount.value;
+          const fromDate = filterFrom.value;
+          const toDate = filterTo.value;
+          
+          let filteredList = store.records.filter(r => {
+              // 1. Account Filter
+              if (accountFilter !== 'All Accounts' && r.account !== accountFilter) return false;
+
+              // 2. Search Filter (Description or Amount)
+              if (searchVal) {
+                  const matchesDesc = r.desc.toLowerCase().includes(searchVal);
+                  const matchesAmount = String(r.amount).includes(searchVal);
+                  if (!matchesDesc && !matchesAmount) return false;
+              }
+
+              // 3. Date Range Filter
+              if (fromDate && r.date < fromDate) return false;
+              if (toDate && r.date > toDate) return false;
+
+              return true;
+          });
+          
+          // 4. Sorting
+          filteredList.sort(sortRecords);
+          
+          renderRecords(filteredList);
+      }
+      
+      function sortRecords(a, b) {
+          const key = currentSort.key;
+          const order = currentSort.order;
+          let valA = a[key];
+          let valB = b[key];
+
+          // Special case for date (string comparison is fine for YYYY-MM-DD)
+          // Special case for amount (convert to number)
+          if (key === 'amount') {
+              valA = Number(valA);
+              valB = Number(valB);
+          }
+          
+          let comparison = 0;
+          if (valA > valB) comparison = 1;
+          else if (valA < valB) comparison = -1;
+
+          return order === 'asc' ? comparison : comparison * -1;
+      }
+      
+      function handleSortClick(key) {
+          if (currentSort.key === key) {
+              currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+          } else {
+              currentSort.key = key;
+              currentSort.order = 'desc'; // Default to descending for new sort key
+          }
+          
+          // Reset other header indicators
+          recordsHead.querySelectorAll('div').forEach(div => {
+              if (div.dataset.sortKey !== key) {
+                  div.removeAttribute('data-sort-order');
+              }
+          });
+          
+          // Set current header indicator
+          const currentHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
+          if (currentHeader) {
+              currentHeader.setAttribute('data-sort-order', currentSort.order);
+          }
+          
+          applyFilters(); // Re-render with new sort order
+      }
+      
+      function applyQuickFilter(type) {
+          // Reset date filters first
+          filterFrom.value = '';
+          filterTo.value = '';
+          
+          // Remove active class from all buttons
+          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+
+          const today = new Date();
+          let from, to;
+
+          if (type === 'today') {
+              from = isoFormat(today);
+              to = isoFormat(today);
+              quickFilterButtons.today.classList.add('active');
+          } else if (type === 'yesterday') {
+              const yesterday = new Date(today);
+              yesterday.setDate(today.getDate() - 1);
+              from = isoFormat(yesterday);
+              to = isoFormat(yesterday);
+              quickFilterButtons.yesterday.classList.add('active');
+          } else if (type === 'month') {
+              const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+              // End date is today, not end of month
+              from = isoFormat(startOfMonth);
+              to = isoFormat(today); 
+              quickFilterButtons.month.classList.add('active');
+          } else if (type === 'fiscal') {
+              const dates = getFiscalYearDates();
+              from = dates.from;
+              to = dates.to;
+              quickFilterButtons.fiscal.classList.add('active');
+          }
+
+          filterFrom.value = from;
+          filterTo.value = to;
+          applyFilters();
+      }
+
+      // -------------------------------------------------------------------
+      // 8. Export/Import (Backup/Restore)
+      // -------------------------------------------------------------------
+
+      function download(data, filename, type) {
+          const file = new Blob([data], {type: type});
+          const a = document.createElement("a");
+          const url = URL.createObjectURL(file);
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() {
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);  
+          }, 0); 
+      }
+      
+      function backupData() {
+          const dataToSave = {
+              version: VERSION_TAG,
+              timestamp: nowTsForLog(),
+              records: store.records,
+              logs: store.logs
+          };
+          const filename = `homeledger_backup_${new Date().toISOString().slice(0,10)}.json`;
+          download(JSON.stringify(dataToSave, null, 2), filename, 'application/json');
+          addLog(`[${nowTsForLog()}] Data backed up successfully.`);
+      }
+
+      function exportCSV() {
+          if (store.records.length === 0) {
+              alert('No records to export.');
+              return;
+          }
+          let csv = "Date,Account,Description,Amount,Sign,GUID\n";
+          store.records.forEach(r => {
+              // Escape quotes in description
+              const safeDesc = r.desc.replace(/"/g, '""'); 
+              csv += `${r.date},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
+          });
+
+          const filename = `homeledger_export_${new Date().toISOString().slice(0,10)}.csv`;
+          download(csv, filename, 'text/csv');
+          addLog(`[${nowTsForLog()}] Data exported to CSV successfully.`);
+      }
+
+      function restoreData(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = function(e) {
+              try {
+                  const data = JSON.parse(e.target.result);
+                  if (data.records && Array.isArray(data.records)) {
+                      store.records = data.records;
+                      store.logs = data.logs || [];
+                      store.logs.unshift(`[${nowTsForLog()}] Data restored from backup file: ${file.name}`);
+                      recalcGrandTotal();
+                      alert(`Successfully restored ${data.records.length} records.`);
+                  } else {
+                      alert('Error: Invalid backup file format. "records" array not found.');
+                  }
+              } catch (err) {
+                  alert('Error reading or parsing the file: ' + err.message);
+              }
+              // Clear file input so same file can be selected again
+              event.target.value = null; 
+          };
+          reader.readAsText(file);
+      }
+
+
+      // -------------------------------------------------------------------
+      // 9. Event Listeners
+      // -------------------------------------------------------------------
+      
+      // Main Action Buttons
+      document.querySelectorAll('.big-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => openModal(e.target.dataset.action));
+      });
+      
+      // Modal Controls
+      saveBtn.addEventListener('click', saveRecord);
+      cancelBtn.addEventListener('click', closeModal);
+      deleteCancelBtn.addEventListener('click', closeModal);
+      deleteConfirmBtn.addEventListener('click', (e) => deleteRecord(e.target.dataset.id));
+      btnReset.addEventListener('click', () => resetOverlay.classList.add('show'));
+      resetCancelBtn.addEventListener('click', closeModal);
+      resetConfirmBtn.addEventListener('click', deleteAllData);
+
+      // Activity Log
+      btnLog.addEventListener('click', () => { 
+          renderLogs(); // Ensure latest logs are rendered
+          logOverlay.classList.add('show');
+      });
+      logClose.addEventListener('click', () => logOverlay.classList.remove('show'));
+      
+      // Theme Toggle
+      themeToggle.addEventListener('click', toggleTheme);
+      
+      // Persistence Controls
+      btnBackup.addEventListener('click', backupData);
+      btnExport.addEventListener('click', exportCSV);
+      btnRestore.addEventListener('click', () => restoreFileInput.click());
+      restoreFileInput.addEventListener('change', restoreData);
+
+      // Filtering Events
+      filterSearch.addEventListener('input', applyFilters);
+      filterAccount.addEventListener('change', applyFilters);
+      filterFrom.addEventListener('change', applyFilters);
+      filterTo.addEventListener('change', applyFilters);
+      
+      // Quick Filter Events
+      quickFilterButtons.today.addEventListener('click', () => applyQuickFilter('today'));
+      quickFilterButtons.yesterday.addEventListener('click', () => applyQuickFilter('yesterday'));
+      quickFilterButtons.month.addEventListener('click', () => applyQuickFilter('month'));
+      quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
+
+
+      // Sorting Events
+      recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
+          div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
+      });
+
+      // -------------------------------------------------------------------
+      // 10. Initialization
+      // -------------------------------------------------------------------
+      function init(){
+          // 1. Load Data
+          loadFromStorage();
+          
+          // 2. Set Theme
+          const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+          applyTheme(savedTheme);
+
+          // 3. Apply Initial Date & Sort State
+          filterFrom.value = isoToday(); // Default filter to today
+          filterTo.value = isoToday();
+          // Set initial sort indicator in the header
+          const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+          if (initialHeader) {
+              initialHeader.setAttribute('data-sort-order', currentSort.order);
+          }
+          quickFilterButtons.today.classList.add('active'); // Activate 'Today' button initially
+          
+          // 4. Calculate and Render
+          recalcGrandTotal();
+          
+          addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
+      }
+      
+      init();
+
+    })();
+  </script>
 </body>
 </html>
