@@ -3,9 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.5.3</title>
-  
-  <link rel="manifest" href="/hledgerapp/manifest.json" />
+  <title>HomeLedger v1.5.3</title>  <link rel="manifest" href="/hledgerapp/manifest.json" />
   
   <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
@@ -558,7 +556,7 @@
       const STORAGE_KEY = 'homeledger_v1_data_v1';
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
-      const VERSION_TAG = 'HomeLedger v1.5.3'; // <-- UPDATED VERSION TAG
+      const VERSION_TAG = 'HomeLedger v1.5.3'; // <-- JavaScript VERSION TAG
       let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
 
@@ -797,7 +795,6 @@
           row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid));
           recordsSection.appendChild(row);
         });
-        // Removed: recalcFilteredSummary(rows); // Logic is now handled by recalcSummaryAndRender
       }
 
       function renderLogs(){
@@ -815,8 +812,6 @@
         renderLogs();
         saveToStorage();
       }
-
-      // REMOVED OLD: recalcFilteredSummary function 
       
       // -------------------------------------------------------------------
       // 6. Record Management (CRUD) (Calls updated to calculateGlobalTotals)
@@ -985,8 +980,6 @@
                   const matchesAmount = String(r.amount).includes(searchVal);
                   if (!matchesDesc && !matchesAmount) return false;
               }
-
-              // Date filtering already done in dateFilteredList
               
               return true;
           });
