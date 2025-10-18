@@ -564,7 +564,7 @@
 
 
       // -------------------------------------------------------------------
-      // 2. GOOGLE SHEETS SYNC LOGIC
+      // 2. GOOGLE SHEETS SYNC LOGIC (UPDATED: Added default status 'Active')
       // -------------------------------------------------------------------
       // ZAROORI NOTE: Agar aap naya deployment banate hain, to is URL ko zaroor badlen.
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
@@ -578,7 +578,7 @@
               description: record.desc,
               amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
               account: record.account || 'N/A',
-              status: recordStatus
+              status: recordStatus // Status 'Active', 'Deleted', ya 'Edit' hoga
           };
           
           try {
@@ -601,7 +601,7 @@
 
 
       // -------------------------------------------------------------------
-      // 3. Helper Functions (No Change)
+      // 3. Helper Functions 
       // -------------------------------------------------------------------
       function pad(n){ return String(n).padStart(2,'0'); }
       function nowTsForLog(){
@@ -638,7 +638,7 @@
       // -------------------------------------------------------------------
       
       // -------------------------------------------------------------------
-      // 4. Persistence & Theme (No Change)
+      // 4. Persistence & Theme 
       // -------------------------------------------------------------------
       function saveToStorage(){
         try{ 
@@ -686,13 +686,9 @@
       }
 
       // -------------------------------------------------------------------
-      // 5. Rendering, Logging, and Summary (MODIFIED FOR FILTERING LOGIC)
+      // 5. Rendering, Logging, and Summary 
       // -------------------------------------------------------------------
       
-      /**
-       * MODIFIED: Calculates and displays the GRAND TOTAL (All Records).
-       * Then triggers filtering and rendering of all other summaries/list.
-       */
       function calculateGlobalTotals(){
           let income = 0, loan = 0, expense = 0;
           store.records.forEach(r=>{
@@ -711,14 +707,9 @@
           saveToStorage();
       }
       
-      /**
-       * NEW FUNCTION: Calculates and updates the two types of Summary fields and renders records.
-       * @param {Array} dateFilteredList - List only filtered by date (for Income/Loan/Expense totals - Requirement 2).
-       * @param {Array} fullFilteredList - List filtered by all criteria (for Filtered Balance and Records list - Requirement 3 & 4).
-       */
       function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
           
-          // 1. Calculate Income/Loan/Expense Summary Totals based on DATE FILTERED LIST (Requirement 2)
+          // 1. Calculate Income/Loan/Expense Summary Totals based on DATE FILTERED LIST
           let income = 0, loan = 0, expense = 0;
           dateFilteredList.forEach(r=>{
               const amount = Number(r.amount || 0);
@@ -733,7 +724,7 @@
           document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           
           
-          // 2. Calculate Filtered Balance based on FULL FILTERED LIST (Requirement 3)
+          // 2. Calculate Filtered Balance based on FULL FILTERED LIST
           let fullIncome = 0, fullLoan = 0, fullExpense = 0;
           fullFilteredList.forEach(r=>{
             const amount = Number(r.amount || 0);
@@ -746,11 +737,10 @@
           // --- Update the Filtered Net Balance ---
           document.getElementById('summary-filtered-balance').textContent = 'Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           
-          // 3. Render the list of records using the FULL FILTERED LIST (Requirement 4)
+          // 3. Render the list of records using the FULL FILTERED LIST
           renderRecordsList(fullFilteredList);
       }
       
-      // RENAMED from renderRecords to renderRecordsList (Minor adjustment for cleaner structure)
       function renderRecordsList(list){
         Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
         const rows = (list && Array.isArray(list)) ? list : [];
@@ -798,7 +788,6 @@
           row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid));
           recordsSection.appendChild(row);
         });
-        // Removed: recalcFilteredSummary(rows); // Logic is now handled by recalcSummaryAndRender
       }
 
       function renderLogs(){
@@ -817,10 +806,9 @@
         saveToStorage();
       }
 
-      // REMOVED OLD: recalcFilteredSummary function 
       
       // -------------------------------------------------------------------
-      // 6. Record Management (CRUD) (Calls updated to calculateGlobalTotals)
+      // 6. Record Management (CRUD) (UPDATED: Status 'Edit' logic added)
       // -------------------------------------------------------------------
       let editingId = null;
 
@@ -891,6 +879,7 @@
           document.querySelector('details.menu').open = false; 
       }
 
+      // >>>>>>>>>>> UPDATED saveRecord() FUNCTION <<<<<<<<<<<
       function saveRecord() {
           if (!dateInput.value || !descInput.value || !amtInput.value) {
               alert('Please fill in all fields (Date, Description, Amount).');
@@ -904,6 +893,9 @@
           const account = accountSelect.value;
           const sign = (account === 'Expense') ? 'expense' : 'positive';
           let logAction;
+
+          // Determine the status for the sheet: 'Edit' if editing, 'Active' if new
+          const sheetStatus = editingId ? 'Edit' : 'Active'; 
 
           const newRecord = {
               guid: editingId || generateGuid(),
@@ -926,13 +918,13 @@
               logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
           }
           
-          sendRecordToSheets(newRecord, 'Active');
+          sendRecordToSheets(newRecord, sheetStatus); // Pass the determined status
           
           addLog(logAction);
-          // UPDATED CALL
           calculateGlobalTotals();
           closeModal();
       }
+      // >>>>>>>>>>> END UPDATED saveRecord() FUNCTION <<<<<<<<<<<
       
       function deleteRecord(guid) {
           const index = store.records.findIndex(r => r.guid === guid);
@@ -943,7 +935,6 @@
           sendRecordToSheets(deletedRecord, 'Deleted'); 
 
           addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
-          // UPDATED CALL
           calculateGlobalTotals();
           closeModal();
       }
@@ -952,14 +943,13 @@
           localStorage.removeItem(STORAGE_KEY);
           store.records = [];
           store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`];
-          // UPDATED CALL
           calculateGlobalTotals();
           closeModal();
           location.reload(); 
       }
 
       // -------------------------------------------------------------------
-      // 7. Filtering and Sorting (MODIFIED: Implementation of two-tier filter)
+      // 7. Filtering and Sorting 
       // -------------------------------------------------------------------
       function applyFilters() {
           const searchVal = filterSearch.value.toLowerCase();
@@ -967,7 +957,7 @@
           const fromDate = filterFrom.value;
           const toDate = filterTo.value;
           
-          // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals (Requirement 2) ---
+          // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals ---
           let dateFilteredList = store.records.filter(r => {
               // Date Range Filter (Only)
               if (fromDate && r.date < fromDate) return false;
@@ -975,7 +965,7 @@
               return true;
           });
           
-          // --- 2. Filter List by ALL criteria for Records List and Filtered Balance (Requirements 3 & 4) ---
+          // --- 2. Filter List by ALL criteria for Records List and Filtered Balance ---
           let fullFilteredList = dateFilteredList.filter(r => {
               // Account Filter
               if (accountFilter !== 'All Accounts' && r.account !== accountFilter) return false;
@@ -1136,7 +1126,6 @@
                       store.records = data.records;
                       store.logs = data.logs || [];
                       store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
-                      // UPDATED CALL
                       calculateGlobalTotals();
                       alert(`Successfully restored ${data.records.length} records from local file.`);
                   } else {
@@ -1150,9 +1139,7 @@
           reader.readAsText(file);
       }
       
-      // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       // NAYA JSONP restoreDataFromSheets() FUNCTION (CORS FIX)
-      // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       function restoreDataFromSheets() {
           if (!confirm("Are you sure you want to pull ALL active records from Google Sheet and replace your current Local Data? (This action cannot be undone locally)")) {
             return;
@@ -1225,11 +1212,9 @@
 
           document.head.appendChild(script);
       }
-      // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
 
       // -------------------------------------------------------------------
-      // 9. Event Listeners (No Change)
+      // 9. Event Listeners
       // -------------------------------------------------------------------
       
       document.querySelectorAll('.big-btn').forEach(btn => {
@@ -1274,7 +1259,7 @@
       });
 
       // -------------------------------------------------------------------
-      // 10. Initialization (Call updated to calculateGlobalTotals)
+      // 10. Initialization 
       // -------------------------------------------------------------------
       function init(){
           loadFromStorage();
@@ -1292,7 +1277,6 @@
           }
           quickFilterButtons.today.classList.add('active');
           
-          // UPDATED CALL
           calculateGlobalTotals(); 
           
           addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
