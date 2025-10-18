@@ -562,9 +562,10 @@
 
 
       // -------------------------------------------------------------------
-      // 2. GOOGLE SHEETS SYNC LOGIC (New Section)
+      // 2. GOOGLE SHEETS SYNC LOGIC (The updated section for fixes)
       // -------------------------------------------------------------------
       // 1. Webhook URL: (Your successfully deployed Apps Script URL)
+      // آپ کا Webhook URL یہاں ڈال دیا گیا ہے!
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
       // 2. Central Sync Function: Sends data to Google Sheets
@@ -575,8 +576,8 @@
           const sheetData = {
               id: record.guid,
               date: record.date,
-              description: record.desc, // Use 'desc' property from your existing record structure
-              // FIX APPLIED HERE: Use negative sign for 'expense' records
+              description: record.desc,
+              // Use negative sign for 'expense' records
               amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
               account: record.account || 'N/A',
               status: recordStatus // 'Active' or 'Deleted'
@@ -585,15 +586,17 @@
           try {
               const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                   method: 'POST',
-                  mode: 'cors', 
+                  // FIX: 'no-cors' استعمال کریں تاکہ Cross-Origin ریکویسٹ کو بلاک نہ کیا جائے
+                  mode: 'no-cors', 
                   headers: {
-                      'Content-Type': 'application/json',
+                      // FIX: Content-Type کو 'text/plain' یا کسی سادہ قسم میں تبدیل کریں
+                      'Content-Type': 'text/plain', 
                   },
                   body: JSON.stringify(sheetData)
               });
 
-              const result = await response.json();
-              console.log('Sheets Sync Status:', result.message); 
+              // 'no-cors' mode میں ہم JSON جواب نہیں پڑھ سکتے، صرف تصدیق کرتے ہیں کہ ریکویسٹ بھیجی گئی ہے
+              console.log('Sheets Sync: Request sent (Status: ' + response.status + ' - Check Apps Script Executions Log)'); 
 
           } catch (error) {
               console.error('Sheet Sync Failed (Check Internet/URL):', error);
@@ -627,7 +630,6 @@
           const d = new Date();
           const year = d.getFullYear();
           const month = d.getMonth(); 
-          let startYear, endYear;
           // Assuming fiscal year starts on July 1st (Pakistan/India)
           if (month >= 6) { startYear = year; endYear = year + 1; } 
           else { startYear = year - 1; endYear = year; }
