@@ -45,7 +45,7 @@
       const STORAGE_KEY = 'homeledger_v1_data_v1';
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
-      const VERSION_TAG = 'HomeLedger v1.5.2'; 
+      const VERSION_TAG = 'HomeLedger v1.5.3'; // Version updated
       let store = { records: [], logs: [] };
       let currentSort = { key: 'date', order: 'desc' };
       
@@ -174,7 +174,7 @@
       }
 
       // -------------------------------------------------------------------
-      // 5. Rendering, Logging, and Summary (MODIFIED to accept two lists)
+      // 5. Rendering, Logging, and Summary (MODIFIED - Bug fixed)
       // -------------------------------------------------------------------
       
       function calculateGlobalTotals(){
@@ -191,6 +191,7 @@
           // --- Only Update Current Balance (Total) ---
           document.getElementById('current-balance').textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           
+          // CRITICAL FIX: Ensure applyFilters is called here after data manipulation
           applyFilters(); 
           saveToStorage();
       }
@@ -202,7 +203,7 @@
        */
       function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
           
-          // 1. Calculate Summary Totals based on DATE FILTERED LIST
+          // 1. Calculate Summary Totals based on DATE FILTERED LIST (As per your requirement)
           let income = 0, loan = 0, expense = 0;
           dateFilteredList.forEach(r=>{
               const amount = Number(r.amount || 0);
@@ -238,10 +239,23 @@
         Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
         const rows = (list && Array.isArray(list)) ? list : [];
         
+        // Find the correct header to display sorting arrow
+        const sortKey = currentSort.key;
+        const sortOrder = currentSort.order;
+        recordsHead.querySelectorAll('div').forEach(div => {
+            if (div.dataset.sortKey === sortKey) {
+                div.setAttribute('data-sort-order', sortOrder);
+            } else {
+                div.removeAttribute('data-sort-order');
+            }
+        });
+
         if (rows.length === 0) {
             const emptyDiv = document.createElement('div');
             emptyDiv.className = 'empty-state';
-            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
+            // Display a relevant message based on filters
+            const isFiltered = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday();
+            emptyDiv.textContent = isFiltered
                                     ? "No records found matching your current filters."
                                     : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
             recordsSection.appendChild(emptyDiv);
@@ -423,7 +437,7 @@
       }
 
       // -------------------------------------------------------------------
-      // 7. Filtering and Sorting (***MODIFIED***)
+      // 7. Filtering and Sorting (MODIFIED)
       // -------------------------------------------------------------------
       function applyFilters() {
           const searchVal = filterSearch.value.toLowerCase();
@@ -487,18 +501,9 @@
               currentSort.order = 'desc';
           }
           
-          recordsHead.querySelectorAll('div').forEach(div => {
-              if (div.dataset.sortKey !== key) {
-                  div.removeAttribute('data-sort-order');
-              }
-          });
-          
-          const currentHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
-          if (currentHeader) {
-              currentHeader.setAttribute('data-sort-order', currentSort.order);
-          }
-          
+          // The rendering function (renderRecordsList) now handles setting the sort arrow in the header.
           applyFilters();
+          saveToStorage(); // Save the new sort state
       }
       
       function applyQuickFilter(type) {
@@ -704,18 +709,17 @@
           filterFrom.value = isoToday();
           filterTo.value = isoToday();
 
-          const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
-          if (initialHeader) {
-              initialHeader.setAttribute('data-sort-order', currentSort.order);
-          }
-          quickFilterButtons.today.classList.add('active');
+          // Initial sort arrow will be set in renderRecordsList via calculateGlobalTotals -> applyFilters
           
           calculateGlobalTotals(); 
           
           addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
       }
       
-      init();
+      // Ensure init runs when the page is fully loaded
+      document.addEventListener('DOMContentLoaded', init);
+      // Fallback for browsers
+      window.onload = init;
 
     })();
 </script>
