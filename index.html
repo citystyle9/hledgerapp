@@ -4,1342 +4,161 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HomeLedger v1.5.3</title>
-  
+
   <link rel="manifest" href="/hledgerapp/manifest.json" />
   <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
-  
+
   <style>
-    /* ------------------------------------------------------------------- */
-    /* 1. CSS Variables and Theme Setup */
-    /* ------------------------------------------------------------------- */
-    :root{
-      /* CORE COLORS - DARK THEME DEFAULT */
-      --bg:#0a0d14; 
-      --panel:#1f2937;
-      --glass-border:#4b5563;
-      --muted:#f3f4f6; 
-      
-      /* UTILITY COLORS */
-      --accent:#60a5fa; /* Blue */
-      --success:#34d399; /* Green */
-      --warning:#fbbf24; /* Yellow */
-      --danger:#ef4444; /* Red */
-      
-      /* SEMANTIC VARIABLES */
-      --text-color: var(--muted);
-      --input-bg: var(--bg); 
-      --input-color: var(--muted);
-      --link-color: var(--accent);
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Light Theme Overrides */
-    body[data-theme='light'] {
-      --bg: #ffffff;
-      --panel: #f3f4f6;
-      --glass-border: #e5e7eb;
-      --muted: #1f2937; 
-      --text-color: #1f2937;
-      --input-bg: #ffffff;
-    }
-
-    /* Reset and Base Styles */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
     body {
       font-family: Arial, sans-serif;
-      background-color: var(--bg);
-      color: var(--text-color);
-      transition: background-color 0.3s, color 0.3s;
+      background: #0a0d14;
+      color: #f3f4f6;
+      margin: 0;
       padding: 20px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
-
-    /* Container and Layout */
-    #app-container {
-      width: 100%;
-      max-width: 800px;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 20px;
-    }
-    header h1 {
-      font-size: 1.8em;
-      color: var(--accent);
-    }
-    .top-controls {
-      display: flex;
-      gap: 10px;
-    }
-    .top-controls button, .top-controls details > summary {
-        padding: 8px 15px;
-        background: var(--panel);
-        border: 1px solid var(--glass-border);
-        color: var(--text-color);
-        cursor: pointer;
-        border-radius: 5px;
-        font-weight: bold;
-    }
-
-    /* Summary Section */
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-      padding: 10px;
-      background: var(--panel);
-      border-radius: 8px;
-    }
-    .summary-card {
-      padding: 10px;
-      border-radius: 6px;
-      text-align: center;
-      background: var(--bg);
-      border: 1px solid var(--glass-border);
-    }
-    .summary-card h4 {
-      font-size: 0.8em;
-      margin-bottom: 5px;
-    }
-    #current-balance { color: var(--accent); font-size: 1.2em; font-weight: bold; }
-    #sum-income { color: var(--success); }
-    #sum-loan { color: var(--warning); }
-    #sum-expense { color: var(--danger); }
-    #summary-filtered-balance { grid-column: span 4; text-align: left; padding-top: 5px; font-size: 0.9em; border-top: 1px dashed var(--glass-border);}
-
-    /* Action Buttons */
-    .action-buttons {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .big-btn {
-      flex-grow: 1;
-      padding: 15px 10px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1em;
-      font-weight: bold;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-    .big-btn:hover { opacity: 0.8; }
-    #btn-add-income { background: var(--success); color: var(--bg); }
-    #btn-add-loan { background: var(--warning); color: var(--bg); }
-    #btn-add-expense { background: var(--danger); color: var(--bg); }
-
-    /* Filter Section */
-    .filters, .quick-filters {
-      padding: 10px;
-      background: var(--panel);
-      border-radius: 8px;
-      margin-bottom: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: flex-end;
-    }
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-    }
-    .filters label, .filter-group label {
-      font-size: 0.8em;
-      margin-bottom: 3px;
-    }
-    .filters input, .filters select {
-      padding: 8px;
-      border: 1px solid var(--glass-border);
-      border-radius: 4px;
-      background: var(--input-bg);
-      color: var(--input-color);
-    }
-    .quick-filters button {
-        padding: 8px 12px;
-        border: 1px solid var(--glass-border);
-        border-radius: 4px;
-        background: var(--bg);
-        color: var(--text-color);
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    .quick-filters button.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: white;
-    }
-
-    /* Records List */
-    #records-section {
-      background: var(--panel);
-      border-radius: 8px;
-      padding: 10px;
-      min-height: 100px;
-    }
-    .records-head {
-      display: grid;
-      grid-template-columns: 100px 100px 1fr 100px 70px;
-      font-weight: bold;
-      border-bottom: 2px solid var(--glass-border);
-      padding-bottom: 5px;
-      margin-bottom: 5px;
-    }
-    .records-head div {
-        cursor: pointer;
-        position: relative;
-    }
-    .records-head div[data-sort-order]::after {
-        content: ' ';
-        position: absolute;
-        right: 5px;
-        font-size: 0.7em;
-        line-height: 1;
-    }
-    .records-head div[data-sort-order="asc"]::after { content: ' ▲'; }
-    .records-head div[data-sort-order="desc"]::after { content: ' ▼'; }
-
-    .record-row {
-      display: grid;
-      grid-template-columns: 100px 100px 1fr 100px 70px;
-      padding: 8px 0;
-      border-bottom: 1px dashed var(--glass-border);
-      align-items: center;
-    }
-    .record-row:hover { background-color: rgba(255, 255, 255, 0.05); }
-    .record-row:last-child { border-bottom: none; }
-    .record-actions button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1em;
-      margin: 0 2px;
-    }
-    .empty-state {
-        text-align: center;
-        padding: 30px;
-        color: var(--glass-border);
-    }
-
-    /* Modal Styles */
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .overlay.show { display: flex; }
-    .modal-content {
-      background: var(--panel);
-      padding: 25px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 450px;
-      box-shadow: var(--shadow);
-    }
-    .modal-content h2 { margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
-    .modal-content label { display: block; margin-top: 15px; font-weight: bold; font-size: 0.9em; }
-    .modal-content input, .modal-content select {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border: 1px solid var(--glass-border);
-      border-radius: 5px;
-      background: var(--input-bg);
-      color: var(--input-color);
-    }
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 25px;
-    }
-    .modal-actions button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    #modal-cancel, #delete-cancel, #reset-cancel, #log-close { background: var(--glass-border); color: var(--bg); }
-    .btn-save { background: var(--accent); color: white; }
-    .btn-save.income { background: var(--success); }
-    .btn-save.loan { background: var(--warning); }
-    .btn-save.expense { background: var(--danger); }
-    
-    /* Log Modal */
-    #activity-log-modal { 
-        max-height: 400px;
-        overflow-y: auto;
-        padding: 10px;
-        border: 1px solid var(--glass-border);
-        border-radius: 5px;
-        margin-top: 15px;
-        background: var(--bg);
-        font-size: 0.8em;
-    }
-    .log-item { margin-bottom: 5px; word-break: break-all; }
-    
-    /* Menu Details */
-    details.menu {
-        position: relative;
-    }
-    details.menu summary::before {
-        content: '⚙️ Options';
-    }
-    details.menu summary {
-        list-style: none; /* Hide default marker */
-    }
-    details.menu summary::-webkit-details-marker {
-        display: none;
-    }
-    .menu-dropdown {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        background: var(--panel);
-        border: 1px solid var(--glass-border);
-        border-radius: 5px;
-        padding: 5px 0;
-        margin-top: 5px;
-        z-index: 10;
-        min-width: 200px;
-    }
-    .menu-dropdown button {
-        display: block;
-        width: 100%;
-        text-align: left;
-        padding: 10px 15px;
-        background: none;
-        border: none;
-        color: var(--text-color);
-        cursor: pointer;
-    }
-    .menu-dropdown button:hover {
-        background: var(--bg);
-    }
-    
-    /* Hide the actual file input */
-    #restore-file { display: none; }
-    
-    /* Responsive Adjustments */
-    @media (max-width: 600px) {
-      .summary-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .summary-card:first-child { grid-column: span 2; } /* Balance full width */
-      .records-head, .record-row {
-        grid-template-columns: 80px 80px 1fr 80px 50px;
-        font-size: 0.9em;
-      }
-      .action-buttons { flex-direction: column; }
-    }
+    button { cursor: pointer; }
+    #records-section { margin-top: 20px; }
+    .record-row { border-bottom: 1px solid #333; padding: 6px 0; display: flex; justify-content: space-between; }
+    .overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; }
+    .overlay.show { display:flex; }
   </style>
 </head>
 <body data-theme="dark">
-    <div id="app-container">
-        <header>
-            <h1>HomeLedger</h1>
-            <div class="top-controls">
-                <button id="theme-toggle" title="Switch Theme"></button>
-                <button id="btn-log" title="Activity Log">Log 📖</button>
-                
-                <details class="menu">
-                    <summary></summary>
-                    <div class="menu-dropdown">
-                        <button id="btn-backup" title="Download Local Data Backup">📥 Backup Data</button>
-                        <button id="btn-export" title="Export All Records to CSV">📄 Export CSV</button>
-                        <button id="btn-restore" title="Restore Data from Local Backup">⬆️ Restore Data</button>
-                        <input type="file" id="restore-file" accept=".json">
-                        <button id="btn-restore-sheet" title="Pull all active records from Google Sheet">🌐 Restore from Sheet</button>
-                        <hr style="margin: 5px 0; border-color: var(--glass-border);">
-                        <button id="btn-reset" title="Delete ALL local data and restart" style="color: var(--danger);">🗑️ Reset All Data</button>
-                    </div>
-                </details>
-            </div>
-        </header>
 
-        <div class="summary-grid">
-            <div class="summary-card">
-                <h4>CURRENT BALANCE</h4>
-                <div id="current-balance">Rs 0.00</div>
-            </div>
-            <div class="summary-card">
-                <h4>TOTAL INCOME</h4>
-                <div id="sum-income">Rs 0.00</div>
-            </div>
-            <div class="summary-card">
-                <h4>TOTAL LOAN</h4>
-                <div id="sum-loan">Rs 0.00</div>
-            </div>
-            <div class="summary-card">
-                <h4>TOTAL EXPENSE</h4>
-                <div id="sum-expense">Rs 0.00</div>
-            </div>
-            <div id="summary-filtered-balance">Filtered Balance: Rs 0.00</div>
-        </div>
+  <h1 style="color:#60a5fa;">HomeLedger</h1>
 
-        <div class="action-buttons">
-            <button id="btn-add-income" class="big-btn" data-action="income">+ Add Income</button>
-            <button id="btn-add-loan" class="big-btn" data-action="loan">+ Add Loan</button>
-            <button id="btn-add-expense" class="big-btn" data-action="expense">+ Add Expense</button>
-        </div>
+  <div class="top-controls">
+    <button id="btn-add-income">+ Add Income</button>
+    <button id="btn-add-expense">+ Add Expense</button>
+    <button id="btn-backup">Backup</button>
+    <button id="btn-restore-sheet">🌐 Restore from Sheet</button>
+  </div>
 
-        <div class="filters">
-            <div class="filter-group" style="flex-grow: 1;">
-                <label for="filter-search">Search Description/Amount</label>
-                <input type="text" id="filter-search" placeholder="e.g. rent, 500">
-            </div>
-            <div class="filter-group">
-                <label for="filter-account">Account Type</label>
-                <select id="filter-account">
-                    <option value="All Accounts">All Accounts</option>
-                    <option value="Income">Income</option>
-                    <option value="Loan">Loan</option>
-                    <option value="Expense">Expense</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="filter-from">From Date</label>
-                <input type="date" id="filter-from">
-            </div>
-            <div class="filter-group">
-                <label for="filter-to">To Date</label>
-                <input type="date" id="filter-to">
-            </div>
-        </div>
-        
-        <div class="quick-filters">
-            <button id="quick-today">Today</button>
-            <button id="quick-yesterday">Yesterday</button>
-            <button id="quick-month">This Month</button>
-            <button id="quick-fiscal">Fiscal Year</button>
-        </div>
+  <section id="records-section"></section>
 
-        <section id="records-section">
-            <div class="records-head">
-                <div data-sort-key="date" data-sort-order="desc">Date</div>
-                <div data-sort-key="account">Account</div>
-                <div data-sort-key="desc">Description</div>
-                <div data-sort-key="amount">Amount (Rs)</div>
-                <div>Actions</div>
-            </div>
-            </section>
-        
+  <div id="log-overlay" class="overlay">
+    <div style="background:#1f2937;padding:20px;border-radius:10px;color:#fff;">
+      <h2>Activity Log</h2>
+      <div id="activity-log-modal" style="max-height:300px;overflow:auto;"></div>
+      <button id="log-close">Close</button>
     </div>
-    
-    <div id="modal-overlay" class="overlay">
-        <div class="modal-content">
-            <h2 id="modal-title">Add New Entry</h2>
-            <label for="entry-date">Date</label>
-            <input type="date" id="entry-date">
-            
-            <label for="entry-account">Account Type</label>
-            <select id="entry-account">
-                <option value="Income">Income</option>
-                <option value="Loan">Loan</option>
-                <option value="Expense">Expense</option>
-            </select>
-            
-            <label for="entry-desc">Description</label>
-            <input type="text" id="entry-desc" placeholder="e.g. Salary, Electricity Bill">
-            
-            <label for="entry-amount">Amount (Rs)</label>
-            <input type="number" id="entry-amount" placeholder="e.g. 15000" min="0" step="0.01">
-            
-            <div class="modal-actions">
-                <button id="modal-cancel">Cancel</button>
-                <button id="modal-save" class="btn-save">Save</button>
-            </div>
-        </div>
-    </div>
+  </div>
 
-    <div id="delete-overlay" class="overlay">
-        <div class="modal-content">
-            <h2>Confirm Deletion</h2>
-            <p>Are you sure you want to permanently delete this record?</p>
-            <div id="delete-record-details" style="background: var(--bg); padding: 10px; border-radius: 5px; margin: 15px 0;"></div>
-            <div class="modal-actions">
-                <button id="delete-cancel">No, Cancel</button>
-                <button id="delete-confirm-btn" style="background: var(--danger); color: white;">Yes, Delete</button>
-            </div>
-        </div>
-    </div>
+  <script>
+  (function() {
 
-    <div id="reset-overlay" class="overlay">
-        <div class="modal-content">
-            <h2>Confirm App Reset</h2>
-            <p style="color: var(--danger); font-weight: bold;">
-                WARNING: This action will permanently delete ALL records from your local browser storage, logs, and sync queue.
-                This WILL NOT delete data from your Google Sheet (unless you manually delete it there).
-            </p>
-            <div class="modal-actions">
-                <button id="reset-cancel">No, Cancel</button>
-                <button id="reset-confirm-btn" style="background: var(--danger); color: white;">Yes, Reset Everything</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="log-overlay" class="overlay">
-        <div class="modal-content" style="max-width: 600px;">
-            <h2>Activity Log</h2>
-            <div id="activity-log-modal">
-                </div>
-            <div class="modal-actions">
-                <button id="log-close">Close</button>
-            </div>
-        </div>
-    </div>
+    const GOOGLE_SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec";
 
+    const STORAGE_KEY = 'homeledger_v1_data_v1';
+    let store = { records: [], logs: [] };
 
-<script>
-    (function(){
-      // -------------------------------------------------------------------
-      // 1. DOM References and Constants
-      // -------------------------------------------------------------------
-      const overlay = document.getElementById('modal-overlay');
-      const deleteOverlay = document.getElementById('delete-overlay');
-      const deleteCancelBtn = document.getElementById('delete-cancel');
-      const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
-      const deleteDetailsDiv = document.getElementById('delete-record-details');
-      const resetOverlay = document.getElementById('reset-overlay'); 
-      const resetCancelBtn = document.getElementById('reset-cancel'); 
-      const resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
-      const title = document.getElementById('modal-title');
-      const accountSelect = document.getElementById('entry-account');
-      const saveBtn = document.getElementById('modal-save');
-      const cancelBtn = document.getElementById('modal-cancel');
-      const dateInput = document.getElementById('entry-date');
-      const descInput = document.getElementById('entry-desc');
-      const amtInput = document.getElementById('entry-amount');
-      const recordsSection = document.getElementById('records-section');
-      const recordsHead = recordsSection.querySelector('.records-head');
-      const logOverlay = document.getElementById('log-overlay');
-      const logClose = document.getElementById('log-close');
-      const btnLog = document.getElementById('btn-log');
-      const btnReset = document.getElementById('btn-reset');
-      const filterSearch = document.getElementById('filter-search');
-      const filterAccount = document.getElementById('filter-account');
-      const filterFrom = document.getElementById('filter-from');
-      const filterTo = document.getElementById('filter-to');
-      const btnBackup = document.getElementById('btn-backup');
-      const btnRestore = document.getElementById('btn-restore');
-      const btnRestoreSheet = document.getElementById('btn-restore-sheet'); 
-      const btnExport = document.getElementById('btn-export');
-      const themeToggle = document.getElementById('theme-toggle'); 
-      const restoreFileInput = document.getElementById('restore-file');
-      
-      const quickFilterButtons = {
-          today: document.getElementById('quick-today'),
-          yesterday: document.getElementById('quick-yesterday'),
-          month: document.getElementById('quick-month'),
-          fiscal: document.getElementById('quick-fiscal')
+    const recordsSection = document.getElementById('records-section');
+    const logOverlay = document.getElementById('log-overlay');
+    const logClose = document.getElementById('log-close');
+    const btnRestoreSheet = document.getElementById('btn-restore-sheet');
+    const btnBackup = document.getElementById('btn-backup');
+
+    function nowTs() {
+      const d = new Date();
+      return d.toISOString().replace('T', ' ').split('.')[0];
+    }
+
+    function addLog(msg) {
+      store.logs.unshift(`[${nowTs()}] ${msg}`);
+      console.log(msg);
+      renderLogs();
+      saveToStorage();
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    }
+
+    function loadFromStorage() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) store = JSON.parse(raw);
+    }
+
+    function renderRecords() {
+      recordsSection.innerHTML = '';
+      if (store.records.length === 0) {
+        recordsSection.innerHTML = "<p style='color:#777;'>No records found.</p>";
+        return;
+      }
+      store.records.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'record-row';
+        div.innerHTML = `<span>${r.date}</span><span>${r.account}</span><span>${r.desc}</span><span>${r.amount}</span>`;
+        recordsSection.appendChild(div);
+      });
+    }
+
+    function renderLogs() {
+      const logDiv = document.getElementById('activity-log-modal');
+      logDiv.innerHTML = store.logs.map(l => `<div>${l}</div>`).join('');
+    }
+
+    logClose.addEventListener('click', () => logOverlay.classList.remove('show'));
+    document.getElementById('btn-add-income').addEventListener('click', () => alert('Add Income form here...'));
+    document.getElementById('btn-add-expense').addEventListener('click', () => alert('Add Expense form here...'));
+    btnBackup.addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(store, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'homeledger_backup.json';
+      a.click();
+      addLog('Local backup created.');
+    });
+
+    // =============== JSONP Restore (CORS-safe) =================
+    function restoreDataFromSheets() {
+      if (!confirm("Restore ALL active records from Google Sheet?")) return;
+
+      addLog("Starting restore (JSONP) ...");
+      const callbackName = "homeledger_cb_" + Date.now();
+      const url = GOOGLE_SHEETS_WEBHOOK + "?action=getall&callback=" + callbackName;
+
+      window[callbackName] = function(response) {
+        try {
+          if (response && Array.isArray(response.records)) {
+            store.records = response.records;
+            addLog(`Restored ${response.records.length} records from Google Sheet.`);
+            renderRecords();
+            alert("Restore successful!");
+          } else {
+            alert("Invalid response from Sheet.");
+            addLog("Restore failed: invalid data format.");
+          }
+        } catch(err) {
+          alert("Error processing data: " + err.message);
+          addLog("Restore error: " + err.message);
+        } finally {
+          delete window[callbackName];
+          document.head.removeChild(script);
+        }
       };
 
-      const STORAGE_KEY = 'homeledger_v1_data_v1';
-      const THEME_KEY = 'homeledger_theme_v1';
-      const SORT_KEY = 'homeledger_sort_v1';
-      const SYNC_QUEUE_KEY = 'homeledger_sync_queue_v1'; 
-      const VERSION_TAG = 'HomeLedger v1.5.3'; // <-- UPDATED VERSION TAG
-      let store = { records: [], logs: [], syncQueue: [] }; 
-      let currentSort = { key: 'date', order: 'desc' };
+      const script = document.createElement('script');
+      script.src = url;
+      script.onerror = () => {
+        alert("Failed to load data from Google Sheet (network/CORS).");
+        addLog("JSONP script load failed.");
+      };
+      document.head.appendChild(script);
+    }
 
+    btnRestoreSheet.addEventListener('click', restoreDataFromSheets);
 
-      // -------------------------------------------------------------------
-      // 2. GOOGLE SHEETS SYNC LOGIC (The updated section for fixes + Offline Logic)
-      // -------------------------------------------------------------------
-      // 1. Webhook URL: (Your successfully deployed Apps Script URL)
-      // NOTE: This is using the last provided URL. Please update if it has changed.
-      const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
+    // ============================================================
 
-      // Function to process the sync queue
-      async function processSyncQueue() {
-          if (!store.syncQueue.length) {
-              addLog(`[${nowTsForLog()}] Sync Queue is empty. Nothing to process.`);
-              return;
-          }
-          addLog(`[${nowTsForLog()}] Processing Sync Queue: ${store.syncQueue.length} pending record(s)...`);
+    // Initialize
+    loadFromStorage();
+    renderRecords();
+    renderLogs();
+    addLog("App Loaded.");
 
-          // Create a copy of the queue and clear the original for immediate saving
-          const queueToProcess = [...store.syncQueue];
-          store.syncQueue = [];
-          saveToStorage(); // Save empty queue immediately to prevent duplicates on crash/reload
-
-          let successfulSyncs = 0;
-          let failedSyncs = 0;
-          const failedQueue = [];
-
-          for (const item of queueToProcess) {
-              try {
-                  const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
-                      method: 'POST',
-                      mode: 'no-cors',
-                      headers: { 'Content-Type': 'text/plain' },
-                      body: JSON.stringify(item.sheetData)
-                  });
-                  
-                  // In 'no-cors' mode, we can only assume success if fetch didn't throw an error.
-                  console.log(`Sheets Sync (Queue): Request sent for ID ${item.id}`); 
-                  successfulSyncs++;
-              } catch (error) {
-                  console.error(`Sheet Sync (Queue) Failed for ID ${item.id}:`, error);
-                  failedSyncs++;
-                  // Push back to the temporary queue for later re-save
-                  failedQueue.push(item); 
-              }
-          }
-
-          if (failedQueue.length > 0) {
-              store.syncQueue = failedQueue; // Add back records that failed during processing
-              addLog(`[${nowTsForLog()}] Queue Processed. Success: ${successfulSyncs}, Failed: ${failedSyncs}. Failed records returned to queue.`);
-          } else {
-              addLog(`[${nowTsForLog()}] Queue Processed Successfully. ${successfulSyncs} records synced.`);
-          }
-          saveToStorage(); // Save the result of the processing
-      }
-
-      // Central Sync Function: Sends data to Google Sheets
-      async function sendRecordToSheets(record, recordStatus = 'Active') { 
-          if (!record || record.amount === 0) return;
-
-          // Prepare the data to be sent (7 fields)
-          const sheetData = {
-              id: record.guid,
-              date: record.date,
-              description: record.desc,
-              // Use negative sign for 'expense' records
-              amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
-              account: record.account || 'N/A',
-              status: recordStatus // 'Active' or 'Deleted'
-          };
-          
-          // If OFFLINE, add to sync queue immediately
-          if (!navigator.onLine) {
-              store.syncQueue.push({ id: record.guid, sheetData: sheetData });
-              addLog(`[${nowTsForLog()}] OFFLINE: Record for ID ${record.guid} added to sync queue (${store.syncQueue.length} total).`);
-              saveToStorage();
-              return;
-          }
-          
-          try {
-              const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
-                  method: 'POST',
-                  mode: 'no-cors', 
-                  headers: {
-                      'Content-Type': 'text/plain', 
-                  },
-                  body: JSON.stringify(sheetData)
-              });
-
-              // 'no-cors' mode mein hum JSON jawab nahin padh sakte
-              console.log('Sheets Sync: Request sent (Status: ' + response.status + ' - Check Apps Script Executions Log)'); 
-
-          } catch (error) {
-              // If error during fetch, assume failure and push to queue for retry
-              store.syncQueue.push({ id: record.guid, sheetData: sheetData });
-              addLog(`[${nowTsForLog()}] ERROR: Sheet Sync failed. Record for ID ${record.guid} added to sync queue (${store.syncQueue.length} total).`);
-              console.error('Sheet Sync Failed (Pushed to Queue):', error);
-              saveToStorage();
-          }
-      }
-      // -------------------------------------------------------------------
-
-
-      // -------------------------------------------------------------------
-      // 3. Helper Functions 
-      // -------------------------------------------------------------------
-      function pad(n){ return String(n).padStart(2,'0'); }
-      function nowTsForLog(){
-        const d = new Date();
-        return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      }
-      function formatAmount(n,sign){
-        return (sign==='positive'?'Rs ':'Rs ') + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      }
-      function isoFormat(d){
-          const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-          return `${y}-${m}-${dd}`;
-      }
-      function isoToday(){
-        const d = new Date();
-        return isoFormat(d);
-      }
-      function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
-      
-      function getFiscalYearDates(){
-          const d = new Date();
-          const year = d.getFullYear();
-          const month = d.getMonth(); 
-          // Assuming fiscal year starts on July 1st (Pakistan/India)
-          let startYear, endYear;
-          if (month >= 6) { startYear = year; endYear = year + 1; } 
-          else { startYear = year - 1; endYear = year; }
-          const fromDate = new Date(startYear, 6, 1); 
-          const toDate = new Date(endYear, 5, 30);   
-          return { from: isoFormat(fromDate), to: isoFormat(toDate) };
-      }
-      
-      function seedSampleData() {
-          return []; 
-      }
-      // -------------------------------------------------------------------
-      // 4. Persistence & Theme 
-      // -------------------------------------------------------------------
-      function saveToStorage(){
-        try{ 
-            // 1. Save main records and logs
-            if (store.records.length > 0 || store.logs.length > 0) {
-                 localStorage.setItem(STORAGE_KEY, JSON.stringify({ records: store.records, logs: store.logs })); 
-            } else {
-                 localStorage.removeItem(STORAGE_KEY);
-            }
-            
-            // 2. Save Sync Queue separately
-            if (store.syncQueue.length > 0) {
-                localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(store.syncQueue));
-            } else {
-                localStorage.removeItem(SYNC_QUEUE_KEY);
-            }
-            
-            // 3. Save settings keys regardless
-            localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
-        }catch(e){}
-      }
-      function loadFromStorage(){
-        try{
-          // 1. Load main records and logs
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if(raw){ 
-              const parsed = JSON.parse(raw); 
-              if(parsed.records) store.records = parsed.records; 
-              if(parsed.logs) store.logs = parsed.logs; 
-          }
-          
-          // 2. Load Sync Queue
-          const rawSyncQueue = localStorage.getItem(SYNC_QUEUE_KEY);
-          if (rawSyncQueue) {
-              store.syncQueue = JSON.parse(rawSyncQueue);
-          }
-
-          // 3. Load sort settings
-          const rawSort = localStorage.getItem(SORT_KEY);
-          if(rawSort) currentSort = JSON.parse(rawSort);
-
-        }catch(e){}
-      }
-      
-      function applyTheme(theme){
-        if(theme === 'light') {
-            document.body.setAttribute('data-theme','light');
-            themeToggle.title = 'Switch to Dark Mode';
-            themeToggle.textContent = '🌙';
-        }
-        else {
-            document.body.removeAttribute('data-theme');
-            themeToggle.title = 'Switch to Light Mode';
-            themeToggle.textContent = '☀️'; 
-        }
-        try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
-      }
-      
-      function toggleTheme(){
-        const cur = localStorage.getItem(THEME_KEY) || 'dark';
-        const next = (cur === 'dark') ? 'light' : 'dark';
-        applyTheme(next);
-        addLog(`[${nowTsForLog()}] Theme changed to ${next}`);
-      }
-
-      // -------------------------------------------------------------------
-      // 5. Rendering, Logging, and Summary 
-      // -------------------------------------------------------------------
-      function renderRecords(list){
-        Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
-        const rows = (list && Array.isArray(list)) ? list : [];
-        
-        if (rows.length === 0) {
-            const emptyDiv = document.createElement('div');
-            emptyDiv.className = 'empty-state';
-            // Custom message if filters are active, otherwise the standard startup message
-            emptyDiv.textContent = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday() 
-                                     ? "No records found matching your current filters."
-                                     : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
-            recordsSection.appendChild(emptyDiv);
-            recalcFilteredSummary(rows);
-            return;
-        }
-
-        rows.forEach(rec=>{
-          const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.guid; 
-          
-          // Determine color for the amount display (for user visibility)
-          let amountColor;
-          if(rec.sign === 'expense') amountColor = `color:var(--danger);font-weight:700`;
-          else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
-          else amountColor = `color:var(--success);font-weight:700`;
-
-
-          row.innerHTML = `
-            <div>${rec.date}</div>
-            <div>${rec.account}</div>
-            <div>${rec.desc}</div>
-            <div style="${amountColor}">${formatAmount(rec.amount,rec.sign)}</div>
-            <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
-          `;
-          row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.guid)); 
-          row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid)); 
-          recordsSection.appendChild(row);
-        });
-        recalcFilteredSummary(rows);
-      }
-
-      function renderLogs(){
-        const logModalList = document.getElementById('activity-log-modal');
-        logModalList.innerHTML = '';
-        store.logs.forEach(entry=>{
-          const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
-          logModalList.appendChild(div);
-        });
-      }
-      
-      function addLog(entry){
-        store.logs.unshift(entry);
-        if(store.logs.length>500) store.logs.length = 500;
-        renderLogs();
-        saveToStorage();
-      }
-
-      // UPDATED FUNCTION NAME: recalcGrandTotal -> calculateGlobalTotals
-      function calculateGlobalTotals(){
-          let income = 0, loan = 0, expense = 0;
-          store.records.forEach(r=>{
-              // Ensure r.amount is treated as a number
-              const amount = Number(r.amount || 0);
-              if(r.account === 'Income') income += amount;
-              else if(r.account === 'Loan') loan += amount;
-              else if(r.account === 'Expense') expense += amount;
-          });
-          const grandBalance = (income + loan) - expense;
-          document.getElementById('current-balance').textContent = 'Rs ' + grandBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('sum-income').textContent = 'Rs ' + income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('sum-loan').textContent = 'Rs ' + loan.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-          // Also trigger filtering to ensure filtered summary is updated too
-          applyFilters();
-          saveToStorage();
-      }
-      
-      function recalcFilteredSummary(filteredList) {
-          let income = 0, loan = 0, expense = 0;
-          filteredList.forEach(r=>{
-              const amount = Number(r.amount || 0);
-              if(r.account === 'Income') income += amount;
-              else if(r.account === 'Loan') loan += amount;
-              else if(r.account === 'Expense') expense += amount;
-          });
-          const filteredBalance = (income + loan) - expense;
-          document.getElementById('summary-filtered-balance').textContent = 'Filtered Balance: Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      }
-      
-      // -------------------------------------------------------------------
-      // 6. Record Management (CRUD)
-      // -------------------------------------------------------------------
-      let editingId = null;
-
-      function generateGuid() {
-          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-              var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-              return v.toString(16);
-          });
-      }
-
-      function openModal(action) {
-          editingId = null;
-          let account = action.charAt(0).toUpperCase() + action.slice(1);
-          if (account === 'Expense') account = 'Expense';
-          if (account === 'Loan') account = 'Loan';
-          if (account === 'Income') account = 'Income'; 
-
-          title.textContent = `Add New ${account}`;
-          accountSelect.value = account;
-          dateInput.value = isoToday();
-          descInput.value = '';
-          amtInput.value = '';
-          
-          accountSelect.disabled = true; // Lock account type during creation
-          saveBtn.className = 'btn-save ' + action;
-          
-          overlay.classList.add('show');
-          descInput.focus();
-      }
-      
-      function openEdit(guid) {
-          const record = store.records.find(r => r.guid === guid);
-          if (!record) return;
-
-          editingId = guid;
-          title.textContent = `Edit ${record.account}`;
-          dateInput.value = record.date;
-          accountSelect.value = record.account;
-          descInput.value = record.desc;
-          amtInput.value = record.amount;
-          
-          accountSelect.disabled = false; // Allow changing account type during edit
-          saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-
-          overlay.classList.add('show');
-          descInput.focus();
-      }
-      
-      function openDeleteConfirm(guid) {
-          const record = store.records.find(r => r.guid === guid);
-          if (!record) return;
-          
-          deleteConfirmBtn.dataset.id = guid;
-          deleteDetailsDiv.innerHTML = `
-              <strong>Date:</strong> ${record.date}<br>
-              <strong>Account:</strong> ${record.account}<br>
-              <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
-              <strong>Description:</strong> ${record.desc}
-          `;
-          deleteOverlay.classList.add('show');
-      }
-
-      function closeModal() {
-          overlay.classList.remove('show');
-          deleteOverlay.classList.remove('show');
-          resetOverlay.classList.remove('show');
-          editingId = null;
-          // Clean up focus/active state from menu dropdown
-          document.querySelector('details.menu').open = false; 
-      }
-
-      function saveRecord() {
-          if (!dateInput.value || !descInput.value || !amtInput.value) {
-              alert('Please fill in all fields (Date, Description, Amount).');
-              return;
-          }
-          const amount = Number(amtInput.value);
-          if (isNaN(amount) || amount <= 0) {
-              alert('Please enter a valid amount.');
-              return;
-          }
-          const account = accountSelect.value;
-          const sign = (account === 'Expense') ? 'expense' : 'positive';
-          let logAction;
-
-          const newRecord = {
-              guid: editingId || generateGuid(),
-              date: dateInput.value,
-              account: account,
-              desc: descInput.value.trim(),
-              amount: amount.toFixed(2), // Store as fixed decimal string
-              sign: sign,
-          };
-
-          if (editingId) {
-              // Edit existing record
-              const index = store.records.findIndex(r => r.guid === editingId);
-              if (index !== -1) {
-                  const oldRecord = store.records[index];
-                  store.records[index] = newRecord;
-                  logAction = `[${nowTsForLog()}] EDITED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} changed to ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
-              }
-          } else {
-              // Add new record
-              store.records.push(newRecord);
-              logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
-          }
-          
-          // Sync with Sheets (Will be queued if offline)
-          sendRecordToSheets(newRecord, 'Active');
-          
-          addLog(logAction);
-          calculateGlobalTotals(); // <-- UPDATED CALL
-          closeModal();
-      }
-      
-      function deleteRecord(guid) {
-          const index = store.records.findIndex(r => r.guid === guid);
-          if (index === -1) return;
-
-          const deletedRecord = store.records.splice(index, 1)[0];
-          
-          // Sync delete with Sheets (Will be queued if offline)
-          sendRecordToSheets(deletedRecord, 'Deleted'); 
-
-          addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
-          calculateGlobalTotals(); // <-- UPDATED CALL
-          closeModal();
-      }
-      
-      function deleteAllData() {
-          localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem(SYNC_QUEUE_KEY); 
-          store.records = [];
-          store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`]; 
-          store.syncQueue = []; 
-          calculateGlobalTotals(); // <-- UPDATED CALL
-          closeModal();
-          // Force reload to clean all state and restart cleanly
-          location.reload(); 
-      }
-
-      // -------------------------------------------------------------------
-      // 7. Filtering and Sorting
-      // -------------------------------------------------------------------
-      function applyFilters() {
-          const searchVal = filterSearch.value.toLowerCase();
-          const accountFilter = filterAccount.value;
-          const fromDate = filterFrom.value;
-          const toDate = filterTo.value;
-          
-          let filteredList = store.records.filter(r => {
-              // 1. Account Filter
-              if (accountFilter !== 'All Accounts' && r.account !== accountFilter) return false;
-
-              // 2. Search Filter (Description or Amount)
-              if (searchVal) {
-                  const matchesDesc = r.desc.toLowerCase().includes(searchVal);
-                  const matchesAmount = String(r.amount).includes(searchVal);
-                  if (!matchesDesc && !matchesAmount) return false;
-              }
-
-              // 3. Date Range Filter
-              if (fromDate && r.date < fromDate) return false;
-              if (toDate && r.date > toDate) return false;
-
-              return true;
-          });
-          
-          // 4. Sorting
-          filteredList.sort(sortRecords);
-          
-          renderRecords(filteredList);
-      }
-      
-      function sortRecords(a, b) {
-          const key = currentSort.key;
-          const order = currentSort.order;
-          let valA = a[key];
-          let valB = b[key];
-
-          // Special case for date (string comparison is fine for YYYY-MM-DD)
-          // Special case for amount (convert to number)
-          if (key === 'amount') {
-              valA = Number(valA);
-              valB = Number(valB);
-          }
-          
-          let comparison = 0;
-          if (valA > valB) comparison = 1;
-          else if (valA < valB) comparison = -1;
-
-          return order === 'asc' ? comparison : comparison * -1;
-      }
-      
-      function handleSortClick(key) {
-          if (currentSort.key === key) {
-              currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
-          } else {
-              currentSort.key = key;
-              currentSort.order = 'desc'; // Default to descending for new sort key
-          }
-          
-          // Reset other header indicators
-          recordsHead.querySelectorAll('div').forEach(div => {
-              if (div.dataset.sortKey !== key) {
-                  div.removeAttribute('data-sort-order');
-              }
-          });
-          
-          // Set current header indicator
-          const currentHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
-          if (currentHeader) {
-              currentHeader.setAttribute('data-sort-order', currentSort.order);
-          }
-          
-          applyFilters(); // Re-render with new sort order
-      }
-      
-      function applyQuickFilter(type) {
-          // Reset date filters first
-          filterFrom.value = '';
-          filterTo.value = '';
-          
-          // Remove active class from all buttons
-          Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
-
-          const today = new Date();
-          let from, to;
-
-          if (type === 'today') {
-              from = isoFormat(today);
-              to = isoFormat(today);
-              quickFilterButtons.today.classList.add('active');
-          } else if (type === 'yesterday') {
-              const yesterday = new Date(today);
-              yesterday.setDate(today.getDate() - 1);
-              from = isoFormat(yesterday);
-              to = isoFormat(yesterday);
-              quickFilterButtons.yesterday.classList.add('active');
-          } else if (type === 'month') {
-              const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-              // End date is today, not end of month
-              from = isoFormat(startOfMonth);
-              to = isoFormat(today); 
-              quickFilterButtons.month.classList.add('active');
-          } else if (type === 'fiscal') {
-              const dates = getFiscalYearDates();
-              from = dates.from;
-              to = dates.to;
-              quickFilterButtons.fiscal.classList.add('active');
-          }
-
-          filterFrom.value = from;
-          filterTo.value = to;
-          applyFilters();
-      }
-
-      // -------------------------------------------------------------------
-      // 8. Export/Import (Backup/Restore)
-      // -------------------------------------------------------------------
-
-      function download(data, filename, type) {
-          const file = new Blob([data], {type: type});
-          const a = document.createElement("a");
-          const url = URL.createObjectURL(file);
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(function() {
-              document.body.removeChild(a);
-              window.URL.revokeObjectURL(url);  
-          }, 0); 
-      }
-      
-      function backupData() {
-          const dataToSave = {
-              version: VERSION_TAG,
-              timestamp: nowTsForLog(),
-              records: store.records,
-              logs: store.logs,
-              syncQueue: store.syncQueue 
-          };
-          const filename = `homeledger_backup_${new Date().toISOString().slice(0,10)}.json`;
-          download(JSON.stringify(dataToSave, null, 2), filename, 'application/json');
-          addLog(`[${nowTsForLog()}] Data backed up successfully.`);
-      }
-
-      function exportCSV() {
-          if (store.records.length === 0) {
-              alert('No records to export.');
-              return;
-          }
-          let csv = "Date,Account,Description,Amount,Sign,GUID\n";
-          store.records.forEach(r => {
-              // Escape quotes in description
-              const safeDesc = r.desc.replace(/"/g, '""'); 
-              csv += `${r.date},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
-          });
-
-          const filename = `homeledger_export_${new Date().toISOString().slice(0,10)}.csv`;
-          download(csv, filename, 'text/csv');
-          addLog(`[${nowTsForLog()}] Data exported to CSV successfully.`);
-      }
-
-      function restoreData(event) {
-          const file = event.target.files[0];
-          if (!file) return;
-
-          const reader = new FileReader();
-          reader.onload = function(e) {
-              try {
-                  const data = JSON.parse(e.target.result);
-                  if (data.records && Array.isArray(data.records)) {
-                      store.records = data.records;
-                      store.logs = data.logs || [];
-                      store.syncQueue = data.syncQueue || []; 
-                      store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
-                      calculateGlobalTotals(); // <-- UPDATED CALL
-                      alert(`Successfully restored ${data.records.length} records from local file. (Sync Queue: ${store.syncQueue.length} items)`);
-                  } else {
-                      alert('Error: Invalid backup file format. "records" array not found.');
-                  }
-              } catch (err) {
-                  alert('Error reading or parsing the file: ' + err.message);
-              }
-              // Clear file input so same file can be selected again
-              event.target.value = null; 
-          };
-          reader.readAsText(file);
-      }
-      
-      // Restore data directly from Google Sheet
-      async function restoreDataFromSheets() {
-          // 1. Confirmation
-          if (!confirm("Are you sure you want to pull ALL active records from Google Sheet and replace your current Local Data? (This action cannot be undone locally)")) {
-              return;
-          }
-          
-          // 2. Build Restore URL
-          const RESTORE_URL = GOOGLE_SHEETS_WEBHOOK + '?action=getall';
-          
-          addLog(`[${nowTsForLog()}] Attempting to restore data from Google Sheet...`);
-
-          try {
-              // 3. Fetch Data 
-              const response = await fetch(RESTORE_URL);
-              
-              if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              
-              const data = await response.json(); 
-
-              if (data.records && Array.isArray(data.records)) {
-                  // 4. Overwrite Local Storage records and clear sync queue
-                  store.records = data.records;
-                  store.syncQueue = []; 
-                  
-                  // 5. Update Log
-                  store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${data.records.length} records loaded.`);
-
-                  // 6. Recalculate and Re-render
-                  calculateGlobalTotals(); // <-- UPDATED CALL
-                  alert(`Successfully restored ${data.records.length} records from Google Sheet.`);
-              } else {
-                  throw new Error("Invalid data format received from sheet.");
-              }
-
-          } catch (error) {
-              addLog(`[${nowTsForLog()}] ERROR: Sheet Restore failed: ${error.message}`);
-              console.error('Sheet Restore Failed:', error);
-              alert('Failed to restore data from Google Sheet. Check activity log for details.');
-          }
-      }
-
-
-      // -------------------------------------------------------------------
-      // 9. Event Listeners 
-      // -------------------------------------------------------------------
-      
-      // Main Action Buttons
-      document.querySelectorAll('.big-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => openModal(e.target.dataset.action));
-      });
-      
-      // Modal Controls
-      saveBtn.addEventListener('click', saveRecord);
-      cancelBtn.addEventListener('click', closeModal);
-      deleteCancelBtn.addEventListener('click', closeModal);
-      deleteConfirmBtn.addEventListener('click', (e) => deleteRecord(e.target.dataset.id));
-      btnReset.addEventListener('click', () => resetOverlay.classList.add('show'));
-      resetCancelBtn.addEventListener('click', closeModal);
-      resetConfirmBtn.addEventListener('click', deleteAllData);
-
-      // Activity Log
-      btnLog.addEventListener('click', () => { 
-          renderLogs(); // Ensure latest logs are rendered
-          logOverlay.classList.add('show');
-      });
-      logClose.addEventListener('click', () => logOverlay.classList.remove('show'));
-      
-      // Theme Toggle
-      themeToggle.addEventListener('click', toggleTheme);
-      
-      // Persistence Controls
-      btnBackup.addEventListener('click', backupData);
-      btnExport.addEventListener('click', exportCSV);
-      btnRestore.addEventListener('click', () => restoreFileInput.click());
-      btnRestoreSheet.addEventListener('click', restoreDataFromSheets); 
-      restoreFileInput.addEventListener('change', restoreData);
-
-      // Filtering Events
-      filterSearch.addEventListener('input', applyFilters);
-      filterAccount.addEventListener('change', applyFilters);
-      filterFrom.addEventListener('change', applyFilters);
-      filterTo.addEventListener('change', applyFilters);
-      
-      // Quick Filter Events
-      quickFilterButtons.today.addEventListener('click', () => applyQuickFilter('today'));
-      quickFilterButtons.yesterday.addEventListener('click', () => applyQuickFilter('yesterday'));
-      quickFilterButtons.month.addEventListener('click', () => applyQuickFilter('month'));
-      quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
-
-
-      // Sorting Events
-      recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
-          div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
-      });
-      
-      // Network status listener for automatic re-sync
-      window.addEventListener('online', () => {
-          addLog(`[${nowTsForLog()}] Network: Status changed to ONLINE. Attempting queue sync.`);
-          if (store.syncQueue.length > 0) {
-              processSyncQueue();
-          }
-      });
-      window.addEventListener('offline', () => {
-          addLog(`[${nowTsForLog()}] Network: Status changed to OFFLINE.`);
-      });
-
-
-      // -------------------------------------------------------------------
-      // 10. Initialization
-      // -------------------------------------------------------------------
-      function init(){
-          // 1. Load Data
-          loadFromStorage();
-          
-          // 2. Set Theme
-          const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-          applyTheme(savedTheme);
-
-          // 3. Apply Initial Date & Sort State
-          filterFrom.value = isoToday(); // Default filter to today
-          filterTo.value = isoToday();
-          // Set initial sort indicator in the header
-          const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
-          if (initialHeader) {
-              initialHeader.setAttribute('data-sort-order', currentSort.order);
-          }
-          quickFilterButtons.today.classList.add('active'); // Activate 'Today' button initially
-          
-          // 4. Calculate and Render
-          calculateGlobalTotals(); // <-- UPDATED CALL
-          
-          // Initial check for pending syncs on app load
-          if (store.syncQueue.length > 0 && navigator.onLine) {
-              addLog(`[${nowTsForLog()}] App loaded with ${store.syncQueue.length} pending record(s). Starting sync.`);
-              processSyncQueue();
-          } else if (store.syncQueue.length > 0 && !navigator.onLine) {
-              addLog(`[${nowTsForLog()}] App loaded while OFFLINE. ${store.syncQueue.length} pending record(s) in queue.`);
-          }
-          
-          addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
-      }
-      
-      init();
-
-    })();
+  })();
   </script>
 </body>
 </html>
