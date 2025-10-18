@@ -3,7 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HomeLedger v1.5.3</title>  <link rel="manifest" href="/hledgerapp/manifest.json" />
+
+  <meta http-equiv="Cache-control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
+  <title>HomeLedger v1.5.4</title>  <link rel="manifest" href="/hledgerapp/manifest.json" />
   
   <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
@@ -65,6 +70,35 @@
     .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
     .brand{font-weight:700}
     .controls{display:flex;gap:8px;align-items:center}
+    
+    /* NEW: Sync Button Styles */
+    #btn-sync-now {
+        background: var(--accent);
+        color: var(--bg);
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    #btn-sync-now.syncing {
+        background: var(--warning);
+        cursor: default;
+    }
+    #sync-status-indicator {
+        font-weight: 400;
+        font-size: 11px;
+        background: var(--bg);
+        color: var(--accent);
+        padding: 2px 4px;
+        border-radius: 2px;
+    }
+
+
     details.menu{position:relative}
     details summary{cursor:pointer;padding:2px 6px}
     details .dropdown{position:absolute;right:0;top:28px;background:var(--panel);color:inherit;border-radius:6px;padding:6px;border:1px solid var(--glass-border)}
@@ -242,7 +276,7 @@
         background:var(--input-bg);
         color:var(--text-color); 
         box-sizing: border-box; 
-        font-size: 16px; /* <-- THE FIX */
+        font-size: 16px; 
     }
     .modal .row-2{display:block;} 
     .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
@@ -356,6 +390,9 @@
     <div class="topbar">
       <div class="brand">HomeLedger</div>
       <div class="controls">
+        <button id="btn-sync-now" style="display:none;" title="Sync Pending Records to Google Sheet">
+            ☁️ Sync Now (<span id="sync-status-indicator">0</span>)
+        </button>
         <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
         <details class="menu">
           <summary>⋮</summary>
@@ -433,7 +470,7 @@
       </div>
     </div>
 
-    <footer>HomeLedger v1.5.3</footer> 
+    <footer>HomeLedger v1.5.4</footer> 
   </div>
 
   <div class="overlay" id="log-overlay" aria-hidden="true">
@@ -546,6 +583,9 @@
       const themeToggle = document.getElementById('theme-toggle'); 
       const restoreFileInput = document.getElementById('restore-file');
       
+      const btnSyncNow = document.getElementById('btn-sync-now'); // NEW
+      const syncStatusIndicator = document.getElementById('sync-status-indicator'); // NEW
+      
       const quickFilterButtons = {
           today: document.getElementById('quick-today'),
           yesterday: document.getElementById('quick-yesterday'),
@@ -556,18 +596,29 @@
       const STORAGE_KEY = 'homeledger_v1_data_v1';
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
-      const VERSION_TAG = 'HomeLedger v1.5.3'; // <-- JavaScript VERSION TAG
-      let store = { records: [], logs: [] };
+      const VERSION_TAG = 'HomeLedger v1.5.4'; // <-- JavaScript VERSION TAG
+      
+      // UPDATED: Added syncQueue to store
+      let store = { records: [], logs: [], syncQueue: [] }; 
       let currentSort = { key: 'date', order: 'desc' };
+      let isSyncing = false; // NEW state flag
 
 
       // -------------------------------------------------------------------
-      // 2. GOOGLE SHEETS SYNC LOGIC (No Change)
+      // 2. GOOGLE SHEETS SYNC LOGIC (MODIFIED FOR QUEUEING)
       // -------------------------------------------------------------------
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
-      async function sendRecordToSheets(record, recordStatus = 'Active') { 
-          if (!record || record.amount === 0) return;
+      /**
+       * Prepares data and attempts to send to Google Sheets.
+       * If it fails (usually due to network), it queues the record for later sync.
+       * @param {Object} record - The record object to sync.
+       * @param {string} recordStatus - 'Active' or 'Deleted'.
+       * @param {boolean} isQueueProcess - Flag to indicate if this is part of the queue processing.
+       * @returns {Promise<boolean>} Resolves true if sync was successful, false otherwise (including queueing).
+       */
+      async function sendRecordToSheets(record, recordStatus = 'Active', isQueueProcess = false) { 
+          if (!record || record.amount === 0) return false;
 
           const sheetData = {
               id: record.guid,
@@ -575,10 +626,14 @@
               description: record.desc,
               amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
               account: record.account || 'N/A',
-              status: recordStatus
+              status: recordStatus,
+              isEdit: record.isEdit || false // Added for clarity in Apps Script
           };
           
           try {
+              // Check network status before attempting fetch (optional but helpful)
+              if (!navigator.onLine) throw new Error('Network offline');
+              
               const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                   method: 'POST',
                   mode: 'no-cors', 
@@ -588,12 +643,115 @@
                   body: JSON.stringify(sheetData)
               });
 
-              console.log('Sheets Sync: Request sent (Status: ' + response.status + ' - Check Apps Script Executions Log)'); 
-
+              // Since mode is 'no-cors', we can't reliably check response.ok or status code.
+              // We assume success if the fetch promise resolves without error.
+              if (!isQueueProcess) {
+                  addLog(`[${nowTsForLog()}] Sheets Sync: Record sent (ID: ${record.guid.substring(0, 8)})`);
+              }
+              return true; // Assume success
+              
           } catch (error) {
-              console.error('Sheet Sync Failed (Check Internet/URL):', error);
+              if (error.message === 'Network offline' || error.name === 'TypeError') {
+                  // Network Error -> Add to queue
+                  if (!isQueueProcess) {
+                      addToSyncQueue(record, recordStatus);
+                  }
+                  return false;
+              }
+              // Other errors (e.g., URL problem) -> Log but don't queue
+              console.error('Sheet Sync Failed (Fatal Error):', error);
+              return false;
           }
       }
+      
+      /**
+       * NEW: Adds a record to the sync queue for later processing.
+       */
+      function addToSyncQueue(record, status) {
+          const existingIndex = store.syncQueue.findIndex(q => q.guid === record.guid);
+          
+          const queueItem = {
+              guid: record.guid,
+              data: record,
+              status: status,
+              timestamp: nowTsForLog()
+          };
+
+          if (existingIndex !== -1) {
+              // Update existing item (e.g., an 'Active' record is now 'Deleted')
+              store.syncQueue[existingIndex] = queueItem;
+              addLog(`[${nowTsForLog()}] Sync Queue: Updated existing item for ${record.desc}.`);
+          } else {
+              // Add new item to the queue
+              store.syncQueue.push(queueItem);
+              addLog(`[${nowTsForLog()}] Sync Queue: Added ${status} request for ${record.desc}.`);
+          }
+          
+          updateSyncButtonStatus();
+          saveToStorage();
+      }
+      
+      /**
+       * NEW: Processes all records in the sync queue.
+       */
+      async function processSyncQueue() {
+          if (store.syncQueue.length === 0 || isSyncing) {
+              updateSyncButtonStatus();
+              return;
+          }
+          
+          isSyncing = true;
+          updateSyncButtonStatus('Syncing...');
+          addLog(`[${nowTsForLog()}] Sync Queue: Started processing ${store.syncQueue.length} pending records.`);
+
+          const failedQueue = [];
+          
+          for (const item of store.syncQueue) {
+              const success = await sendRecordToSheets(item.data, item.status, true);
+              if (success) {
+                  // Successfully synced: log and continue
+                  addLog(`[${nowTsForLog()}] Sync Queue: Sent ${item.status} request for ${item.data.desc}.`);
+              } else {
+                  // Failed again (Network still down or other transient error): requeue
+                  failedQueue.push(item);
+                  addLog(`[${nowTsForLog()}] Sync Queue: Failed to send ${item.data.desc}. Requeuing.`);
+              }
+          }
+
+          store.syncQueue = failedQueue;
+          
+          if (store.syncQueue.length === 0) {
+              addLog(`[${nowTsForLog()}] Sync Queue: All records synced successfully.`);
+          } else {
+              addLog(`[${nowTsForLog()}] Sync Queue: Finished batch. ${store.syncQueue.length} records remain (Network issue?).`);
+          }
+          
+          isSyncing = false;
+          updateSyncButtonStatus();
+          saveToStorage();
+      }
+
+      /**
+       * NEW: Updates the Sync Now button appearance and count.
+       */
+      function updateSyncButtonStatus(statusText = null) {
+          if (store.syncQueue.length > 0) {
+              btnSyncNow.style.display = 'flex';
+              syncStatusIndicator.textContent = store.syncQueue.length;
+              if (isSyncing) {
+                  btnSyncNow.classList.add('syncing');
+                  btnSyncNow.disabled = true;
+                  btnSyncNow.innerHTML = `☁️ ${statusText || 'Syncing...'} (${store.syncQueue.length})`;
+              } else {
+                  btnSyncNow.classList.remove('syncing');
+                  btnSyncNow.disabled = false;
+                  btnSyncNow.innerHTML = `☁️ Sync Now (<span id="sync-status-indicator">${store.syncQueue.length}</span>)`;
+              }
+          } else {
+              btnSyncNow.style.display = 'none';
+          }
+      }
+      
       // -------------------------------------------------------------------
 
 
@@ -635,11 +793,11 @@
       // -------------------------------------------------------------------
       
       // -------------------------------------------------------------------
-      // 4. Persistence & Theme (No Change)
+      // 4. Persistence & Theme (MODIFIED: Added syncQueue to Save/Load)
       // -------------------------------------------------------------------
       function saveToStorage(){
         try{ 
-            if (store.records.length > 0 || store.logs.length > 0) {
+            if (store.records.length > 0 || store.logs.length > 0 || store.syncQueue.length > 0) {
                   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
             } else {
                   localStorage.removeItem(STORAGE_KEY);
@@ -654,6 +812,7 @@
               const parsed = JSON.parse(raw); 
               if(parsed.records) store.records = parsed.records; 
               if(parsed.logs) store.logs = parsed.logs; 
+              if(parsed.syncQueue) store.syncQueue = parsed.syncQueue; // NEW
           }
           const rawSort = localStorage.getItem(SORT_KEY);
           if(rawSort) currentSort = JSON.parse(rawSort);
@@ -683,13 +842,9 @@
       }
 
       // -------------------------------------------------------------------
-      // 5. Rendering, Logging, and Summary (MODIFIED FOR FILTERING LOGIC)
+      // 5. Rendering, Logging, and Summary 
       // -------------------------------------------------------------------
       
-      /**
-       * MODIFIED: Calculates and displays the GRAND TOTAL (All Records).
-       * Then triggers filtering and rendering of all other summaries/list.
-       */
       function calculateGlobalTotals(){
           let income = 0, loan = 0, expense = 0;
           store.records.forEach(r=>{
@@ -701,21 +856,15 @@
           
           const globalBalance = (income + loan) - expense;
 
-          // --- 1. Only Update Current Balance (Total) (Requirement 1) ---
           document.getElementById('current-balance').textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           
-          applyFilters(); // Trigger filtering and rendering of all other summaries/list
+          applyFilters(); 
           saveToStorage();
       }
       
-      /**
-       * NEW FUNCTION: Calculates and updates the two types of Summary fields and renders records.
-       * @param {Array} dateFilteredList - List only filtered by date (for Income/Loan/Expense totals - Requirement 2).
-       * @param {Array} fullFilteredList - List filtered by all criteria (for Filtered Balance and Records list - Requirement 3 & 4).
-       */
       function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
           
-          // 1. Calculate Income/Loan/Expense Summary Totals based on DATE FILTERED LIST (Requirement 2)
+          // 1. Calculate Income/Loan/Expense Summary Totals based on DATE FILTERED LIST 
           let income = 0, loan = 0, expense = 0;
           dateFilteredList.forEach(r=>{
               const amount = Number(r.amount || 0);
@@ -730,7 +879,7 @@
           document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           
           
-          // 2. Calculate Filtered Balance based on FULL FILTERED LIST (Requirement 3)
+          // 2. Calculate Filtered Balance based on FULL FILTERED LIST 
           let fullIncome = 0, fullLoan = 0, fullExpense = 0;
           fullFilteredList.forEach(r=>{
             const amount = Number(r.amount || 0);
@@ -743,11 +892,10 @@
           // --- Update the Filtered Net Balance ---
           document.getElementById('summary-filtered-balance').textContent = 'Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
           
-          // 3. Render the list of records using the FULL FILTERED LIST (Requirement 4)
+          // 3. Render the list of records using the FULL FILTERED LIST 
           renderRecordsList(fullFilteredList);
       }
       
-      // RENAMED from renderRecords to renderRecordsList (Minor adjustment for cleaner structure)
       function renderRecordsList(list){
         Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
         const rows = (list && Array.isArray(list)) ? list : [];
@@ -814,7 +962,7 @@
       }
       
       // -------------------------------------------------------------------
-      // 6. Record Management (CRUD) (Calls updated to calculateGlobalTotals)
+      // 6. Record Management (CRUD) (MODIFIED: Added isEdit flag to record)
       // -------------------------------------------------------------------
       let editingId = null;
 
@@ -885,7 +1033,7 @@
           document.querySelector('details.menu').open = false; 
       }
 
-      function saveRecord() {
+      async function saveRecord() {
           if (!dateInput.value || !descInput.value || !amtInput.value) {
               alert('Please fill in all fields (Date, Description, Amount).');
               return;
@@ -906,6 +1054,7 @@
               desc: descInput.value.trim(),
               amount: amount.toFixed(2), 
               sign: sign,
+              isEdit: !!editingId // NEW: Flag for Apps Script
           };
 
           if (editingId) {
@@ -920,24 +1069,33 @@
               logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
           }
           
-          sendRecordToSheets(newRecord, 'Active');
+          // MODIFIED: Await sync attempt
+          const syncSuccess = await sendRecordToSheets(newRecord, 'Active');
+          
+          if(!syncSuccess) {
+              addLog(`[${nowTsForLog()}] INFO: Record saved locally. Sync PENDING due to network.`);
+          }
           
           addLog(logAction);
-          // UPDATED CALL
           calculateGlobalTotals();
           closeModal();
       }
       
-      function deleteRecord(guid) {
+      async function deleteRecord(guid) {
           const index = store.records.findIndex(r => r.guid === guid);
           if (index === -1) return;
 
           const deletedRecord = store.records.splice(index, 1)[0];
+          deletedRecord.isEdit = true; // Treat deletion as an edit/update to status
           
-          sendRecordToSheets(deletedRecord, 'Deleted'); 
+          // MODIFIED: Await sync attempt for deletion status
+          const syncSuccess = await sendRecordToSheets(deletedRecord, 'Deleted'); 
+          
+          if(!syncSuccess) {
+              addLog(`[${nowTsForLog()}] INFO: Deletion saved locally. Sync PENDING (Deletion) due to network.`);
+          }
 
           addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
-          // UPDATED CALL
           calculateGlobalTotals();
           closeModal();
       }
@@ -946,14 +1104,14 @@
           localStorage.removeItem(STORAGE_KEY);
           store.records = [];
           store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`];
-          // UPDATED CALL
+          store.syncQueue = []; // NEW
           calculateGlobalTotals();
           closeModal();
           location.reload(); 
       }
 
       // -------------------------------------------------------------------
-      // 7. Filtering and Sorting (MODIFIED: Implementation of two-tier filter)
+      // 7. Filtering and Sorting (No Change)
       // -------------------------------------------------------------------
       function applyFilters() {
           const searchVal = filterSearch.value.toLowerCase();
@@ -961,20 +1119,15 @@
           const fromDate = filterFrom.value;
           const toDate = filterTo.value;
           
-          // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals (Requirement 2) ---
           let dateFilteredList = store.records.filter(r => {
-              // Date Range Filter (Only)
               if (fromDate && r.date < fromDate) return false;
               if (toDate && r.date > toDate) return false;
               return true;
           });
           
-          // --- 2. Filter List by ALL criteria for Records List and Filtered Balance (Requirements 3 & 4) ---
           let fullFilteredList = dateFilteredList.filter(r => {
-              // Account Filter
               if (accountFilter !== 'All Accounts' && r.account !== accountFilter) return false;
 
-              // Search Filter (Description or Amount)
               if (searchVal) {
                   const matchesDesc = r.desc.toLowerCase().includes(searchVal);
                   const matchesAmount = String(r.amount).includes(searchVal);
@@ -984,10 +1137,8 @@
               return true;
           });
           
-          // 3. Sorting (Applies only to the final list for rendering)
           fullFilteredList.sort(sortRecords);
           
-          // 4. Calculate summary and render the filtered list
           recalcSummaryAndRender(dateFilteredList, fullFilteredList);
       }
       
@@ -1017,14 +1168,12 @@
               currentSort.order = 'desc';
           }
           
-          // Reset other header indicators
           recordsHead.querySelectorAll('div').forEach(div => {
               if (div.dataset.sortKey !== key) {
                   div.removeAttribute('data-sort-order');
               }
           });
           
-          // Set current header indicator
           const currentHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
           if (currentHeader) {
               currentHeader.setAttribute('data-sort-order', currentSort.order);
@@ -1071,7 +1220,7 @@
       }
 
       // -------------------------------------------------------------------
-      // 8. Export/Import (Backup/Restore) (Calls updated to calculateGlobalTotals)
+      // 8. Export/Import (Backup/Restore) (MODIFIED: Added syncQueue to Backup)
       // -------------------------------------------------------------------
 
       function download(data, filename, type) {
@@ -1093,7 +1242,8 @@
               version: VERSION_TAG,
               timestamp: nowTsForLog(),
               records: store.records,
-              logs: store.logs
+              logs: store.logs,
+              syncQueue: store.syncQueue // NEW: Included sync queue
           };
           const filename = `homeledger_backup_${new Date().toISOString().slice(0,10)}.json`;
           download(JSON.stringify(dataToSave, null, 2), filename, 'application/json');
@@ -1127,9 +1277,12 @@
                   if (data.records && Array.isArray(data.records)) {
                       store.records = data.records;
                       store.logs = data.logs || [];
+                      store.syncQueue = data.syncQueue || []; // NEW: Restored sync queue
                       store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
-                      // UPDATED CALL
+                      
                       calculateGlobalTotals();
+                      updateSyncButtonStatus(); // NEW: Update status after restore
+                      
                       alert(`Successfully restored ${data.records.length} records from local file.`);
                   } else {
                       alert('Error: Invalid backup file format. "records" array not found.');
@@ -1162,10 +1315,12 @@
 
               if (data.records && Array.isArray(data.records)) {
                   store.records = data.records;
+                  store.syncQueue = []; // Clear queue on successful sheet restore
                   store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${data.records.length} records loaded.`);
 
-                  // UPDATED CALL
                   calculateGlobalTotals();
+                  updateSyncButtonStatus(); // NEW
+                  
                   alert(`✅ Successfully restored ${data.records.length} active records from your Google Sheet.`);
                   
               } else {
@@ -1183,7 +1338,7 @@
 
 
       // -------------------------------------------------------------------
-      // 9. Event Listeners (No Change)
+      // 9. Event Listeners (MODIFIED: Added Sync button listener)
       // -------------------------------------------------------------------
       
       document.querySelectorAll('.big-btn').forEach(btn => {
@@ -1212,6 +1367,8 @@
       btnRestoreSheet.addEventListener('click', restoreDataFromSheets);
       restoreFileInput.addEventListener('change', restoreData);
 
+      btnSyncNow.addEventListener('click', processSyncQueue); // NEW: Sync Button Listener
+      
       // Filtering Events (Only call applyFilters)
       filterSearch.addEventListener('input', applyFilters);
       filterAccount.addEventListener('change', applyFilters);
@@ -1226,9 +1383,13 @@
       recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
           div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
       });
+      
+      // NEW: Event listener to automatically process queue when internet comes back
+      window.addEventListener('online', processSyncQueue);
+
 
       // -------------------------------------------------------------------
-      // 10. Initialization (Call updated to calculateGlobalTotals)
+      // 10. Initialization (MODIFIED: Added sync queue check)
       // -------------------------------------------------------------------
       function init(){
           loadFromStorage();
@@ -1239,15 +1400,18 @@
           filterFrom.value = isoToday();
           filterTo.value = isoToday();
 
-          // Set initial sort indicator in the header
           const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
           if (initialHeader) {
               initialHeader.setAttribute('data-sort-order', currentSort.order);
           }
           quickFilterButtons.today.classList.add('active');
           
-          // UPDATED CALL
           calculateGlobalTotals(); 
+          
+          updateSyncButtonStatus(); // NEW: Check initial status
+          if (store.syncQueue.length > 0) { // NEW: Attempt to sync on load if queue exists
+              processSyncQueue();
+          }
           
           addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
       }
