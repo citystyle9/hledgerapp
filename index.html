@@ -608,16 +608,19 @@
           
           async function attemptFetch(data) {
               try {
+                  // This FETCH request is the POST request that may trigger CORB.
+                  // It uses mode: 'no-cors' and sends simple data as text/plain
                   await fetch(GOOGLE_SHEETS_WEBHOOK, {
                       method: 'POST',
                       mode: 'no-cors', 
                       headers: {
-                          'Content-Type': 'text/plain', 
+                          'Content-Type': 'text/plain', // Must be text/plain for no-cors
                       },
                       body: JSON.stringify(data)
                   });
                   return true; 
               } catch (error) {
+                  // This catch block usually only captures network errors, not CORB itself.
                   console.error('Sheet Sync Failed (Network Error - Check Internet/URL):', error);
                   return false;
               }
@@ -627,6 +630,8 @@
 
           if (success) {
               console.log('Sheets Sync: Request sent successfully.');
+              // Since the request used 'no-cors', we cannot read the response status, 
+              // so we assume success and clear the pending queue item.
               const index = pendingSyncQueue.findIndex(item => item.id === record.guid);
               if(index > -1) {
                    pendingSyncQueue.splice(index, 1);
@@ -634,7 +639,7 @@
                    addLog(`[${nowTsForLog()}] ✅ Sync Success: ${recordStatus} request for ${record.desc} completed and removed from queue.`);
               }
           } else {
-              // Add to Queue if sync fails
+              // Add to Queue if sync fails (e.g., due to network error)
               addToPendingQueue(record, recordStatus);
           }
       }
@@ -643,6 +648,7 @@
       // *******************************************************************
       // NEW GLOBAL CALLBACK FUNCTION (CRITICAL JSONP FIX)
       // *******************************************************************
+      // This is the function called by the Apps Script response
       window.handleSheetRestoreResponse = function(sheetRecords) {
           // Remove the script tag immediately
           const script = document.getElementById('jsonp-script');
@@ -660,9 +666,10 @@
                   return;
               }
 
+              // Filter out records marked as 'DELETED'
               let restoredRecords = sheetRecords.filter(r => String(r.status_normalized).toUpperCase() !== 'DELETED');
               
-              // 2. Normalize and Process Records - Use Map to ensure only the LATEST version 
+              // Use Map to ensure only the LATEST version (by GUID) is kept
               const finalRecordsMap = new Map();
               
               restoredRecords.forEach(sheetRec => {
@@ -670,11 +677,14 @@
                       date: sheetRec.date,
                       account: sheetRec.account,
                       desc: sheetRec.description,
+                      // The amount is already signed in the sheet (D column), 
+                      // but we need the positive absolute value for the app's internal store
                       amount: Math.abs(Number(sheetRec.amount)).toFixed(2), 
                       guid: sheetRec.id,
                       status: String(sheetRec.status_normalized).toUpperCase() === 'EDIT' ? 'Edit' : 'Active'
                   };
 
+                  // Re-determine account type if it was missing or inconsistent
                   if (localRec.account === 'N/A' || !localRec.account) {
                       localRec.account = (Number(sheetRec.amount) >= 0) ? 'Income' : 'Expense';
                   } else if (Number(sheetRec.amount) < 0 && localRec.account !== 'Expense') {
@@ -1101,6 +1111,7 @@
 
       // *******************************************************************
       // MODIFIED restoreFromSheet FUNCTION (Uses JSONP via Script Tag)
+      // FIXES THE CORB ERROR for RESTORE
       // *******************************************************************
       function restoreFromSheet() {
           if (!confirm('Are you sure you want to replace ALL local data with data fetched from Google Sheets?')) {
@@ -1124,7 +1135,7 @@
               script.id = 'jsonp-script';
               script.src = restoreURL;
               
-              // Set a timeout to catch network errors/timeouts (cannot reliably catch CORS errors with JSONP)
+              // Set a timeout to catch network errors/timeouts
               script.onerror = function() {
                   this.remove();
                   alert("Restore failed: Network or Script loading error. Please check your internet connection and Apps Script URL.");
