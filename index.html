@@ -286,7 +286,7 @@
           white-space: normal;
       }
       
-      /* 3. Ensure Amount (4th item) is visible and aligned */
+      /* 3. Ensure Amount (4rd item) is visible and aligned */
       .records-head div:nth-child(4), .record-row div:nth-child(4) {
           align-items: center;
           justify-content: flex-end; /* Align amount to the right */
@@ -556,24 +556,22 @@
       };
 
       const STORAGE_KEY = 'homeledger_v1_data_v1';
-      const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1'; // <-- NEW CONSTANT
+      const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1'; 
       const THEME_KEY = 'homeledger_theme_v1';
       const SORT_KEY = 'homeledger_sort_v1';
       const VERSION_TAG = 'HomeLedger v1.5.3'; 
       let store = { records: [], logs: [] };
-      let pendingSyncQueue = []; // <-- NEW VARIABLE
+      let pendingSyncQueue = []; 
       let currentSort = { key: 'date', order: 'desc' };
 
 
       // -------------------------------------------------------------------
-      // 2. GOOGLE SHEETS SYNC LOGIC (MODIFIED FOR OFFLINE QUEUE)
+      // 2. GOOGLE SHEETS SYNC LOGIC
       // -------------------------------------------------------------------
-      // ZAROORI NOTE: Is URL ko aapke bataye hue URL se update kar diya gaya hai.
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
       // NEW HELPER FUNCTION: Add to Queue
       function addToPendingQueue(record, recordStatus) {
-          // Check if a similar record is already in the queue (e.g. an earlier delete followed by an add/edit)
           const existingIndex = pendingSyncQueue.findIndex(item => item.id === record.guid);
           
           const sheetData = {
@@ -586,7 +584,6 @@
           };
 
           if (existingIndex > -1) {
-              // Replace old pending item with the new, final status
               pendingSyncQueue[existingIndex] = sheetData;
           } else {
               pendingSyncQueue.push(sheetData);
@@ -608,10 +605,8 @@
               status: recordStatus
           };
           
-          // Function to handle the actual fetch request
           async function attemptFetch(data) {
               try {
-                  // Note: We use 'no-cors' here, so we only get success status (200) not a real response object.
                   await fetch(GOOGLE_SHEETS_WEBHOOK, {
                       method: 'POST',
                       mode: 'no-cors', 
@@ -620,10 +615,8 @@
                       },
                       body: JSON.stringify(data)
                   });
-                  // If fetch succeeds, we assume it was sent.
                   return true; 
               } catch (error) {
-                  // This catches Network Errors (internet off)
                   console.error('Sheet Sync Failed (Network Error - Check Internet/URL):', error);
                   return false;
               }
@@ -633,7 +626,6 @@
 
           if (success) {
               console.log('Sheets Sync: Request sent successfully.');
-              // If the record was in the pending queue, remove it now.
               const index = pendingSyncQueue.findIndex(item => item.id === record.guid);
               if(index > -1) {
                    pendingSyncQueue.splice(index, 1);
@@ -686,7 +678,7 @@
       // -------------------------------------------------------------------
       
       // -------------------------------------------------------------------
-      // 4. Persistence & Theme (MODIFIED)
+      // 4. Persistence & Theme
       // -------------------------------------------------------------------
       function saveToStorage(){
         try{ 
@@ -696,13 +688,11 @@
                   localStorage.removeItem(STORAGE_KEY);
             }
             
-            // <-- NEW CODE START: Save Pending Queue
             if (pendingSyncQueue.length > 0) {
                 localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(pendingSyncQueue));
             } else {
                 localStorage.removeItem(PENDING_SYNC_KEY);
             }
-            // NEW CODE END -->
             
             localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
         }catch(e){}
@@ -716,12 +706,10 @@
               if(parsed.logs) store.logs = parsed.logs; 
           }
           
-          // <-- NEW CODE START: Load Pending Queue
           const rawPending = localStorage.getItem(PENDING_SYNC_KEY);
           if(rawPending) {
               pendingSyncQueue = JSON.parse(rawPending);
           }
-          // NEW CODE END -->
           
           const rawSort = localStorage.getItem(SORT_KEY);
           if(rawSort) currentSort = JSON.parse(rawSort);
@@ -1004,7 +992,7 @@
       
       function deleteAllData() {
           localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem(PENDING_SYNC_KEY); // <-- NEW: Clear the queue too
+          localStorage.removeItem(PENDING_SYNC_KEY); 
           store.records = [];
           pendingSyncQueue = [];
           store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`];
@@ -1014,19 +1002,36 @@
       }
 
       // -------------------------------------------------------------------
-      // 7. Filtering and Sorting 
+      // 7. Filtering and Sorting (DATE OBJECT FIX APPLIED HERE)
       // -------------------------------------------------------------------
       function applyFilters() {
           const searchVal = filterSearch.value.toLowerCase();
           const accountFilter = filterAccount.value;
-          const fromDate = filterFrom.value;
-          const toDate = filterTo.value;
+          
+          // Dates ko Date Objects mein convert karen
+          const fromDateStr = filterFrom.value;
+          const toDateStr = filterTo.value;
+          
+          // Agar dates maujood hain, toh unhe Date Object mein convert karen.
+          // Timezone issues se bachne ke liye set to midnight UTC:
+          const fromDateObj = fromDateStr ? new Date(fromDateStr + 'T00:00:00Z') : null;
+          const toDateObj = toDateStr ? new Date(toDateStr + 'T00:00:00Z') : null;
           
           // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals ---
           let dateFilteredList = store.records.filter(r => {
-              // Date Range Filter (Only)
-              if (fromDate && r.date < fromDate) return false;
-              if (toDate && r.date > toDate) return false;
+              // Har record ki date ko bhi Date Object mein convert karen.
+              // Timezone issues se bachne ke liye set to midnight UTC:
+              const recordDateObj = new Date(r.date + 'T00:00:00Z');
+              
+              if (fromDateObj) {
+                 // Check if record date is BEFORE the start date (Less than)
+                 if (recordDateObj < fromDateObj) return false;
+              }
+              if (toDateObj) {
+                 // Check if record date is AFTER the end date (Greater than)
+                 // Note: We need to include the end date, so we use > for strict check
+                 if (recordDateObj > toDateObj) return false;
+              }
               return true;
           });
           
@@ -1042,8 +1047,6 @@
                   if (!matchesDesc && !matchesAmount) return false;
               }
 
-              // Date filtering already done in dateFilteredList
-              
               return true;
           });
           
@@ -1053,7 +1056,7 @@
           // 4. Calculate summary and render the filtered list
           recalcSummaryAndRender(dateFilteredList, fullFilteredList);
       }
-      
+
       function sortRecords(a, b) {
           const key = currentSort.key;
           const order = currentSort.order;
@@ -1157,7 +1160,7 @@
               timestamp: nowTsForLog(),
               records: store.records,
               logs: store.logs,
-              pendingSync: pendingSyncQueue // <-- NEW: Include pending queue in backup
+              pendingSync: pendingSyncQueue 
           };
           const filename = `homeledger_backup_${new Date().toISOString().slice(0,10)}.json`;
           download(JSON.stringify(dataToSave, null, 2), filename, 'application/json');
@@ -1191,7 +1194,7 @@
                   if (data.records && Array.isArray(data.records)) {
                       store.records = data.records;
                       store.logs = data.logs || [];
-                      pendingSyncQueue = data.pendingSync || []; // <-- NEW: Restore pending queue
+                      pendingSyncQueue = data.pendingSync || []; 
                       
                       store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
                       calculateGlobalTotals();
@@ -1209,7 +1212,6 @@
       
       // JSONP restoreDataFromSheets() FUNCTION
       function restoreDataFromSheets(isAutoLoad) {
-          // Check if this is an auto-load or manual button click
           if (!isAutoLoad && !confirm("Are you sure you want to pull ALL active records from Google Sheet and replace your current Local Data? (This action cannot be undone locally)")) {
             return;
           }
@@ -1285,7 +1287,7 @@
       }
 
       // -------------------------------------------------------------------
-      // 9. Auto Sync Logic (NEW)
+      // 9. Auto Sync Logic
       // -------------------------------------------------------------------
       async function attemptPendingSync() {
           if (pendingSyncQueue.length === 0) {
@@ -1361,7 +1363,7 @@
       btnBackup.addEventListener('click', backupData);
       btnExport.addEventListener('click', exportCSV);
       btnRestore.addEventListener('click', () => restoreFileInput.click());
-      btnRestoreSheet.addEventListener('click', () => restoreDataFromSheets(false)); // Manual click
+      btnRestoreSheet.addEventListener('click', () => restoreDataFromSheets(false)); 
       restoreFileInput.addEventListener('change', restoreData);
 
       // Filtering Events (Only call applyFilters)
@@ -1388,23 +1390,23 @@
           const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
           applyTheme(savedTheme);
 
+          // Default Filter 'Today' set kiya gaya hai:
           filterFrom.value = isoToday();
           filterTo.value = isoToday();
-
+          quickFilterButtons.today.classList.add('active');
+          
           // Set initial sort indicator in the header
           const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
           if (initialHeader) {
               initialHeader.setAttribute('data-sort-order', currentSort.order);
           }
-          quickFilterButtons.today.classList.add('active');
           
           calculateGlobalTotals(); 
           
-          // <-- NEW CODE START: Auto Sync Check
+          // Auto Sync Check
           if (pendingSyncQueue.length > 0) {
               attemptPendingSync();
           }
-          // NEW CODE END -->
           
           addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
       }
