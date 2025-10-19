@@ -568,7 +568,7 @@
       // -------------------------------------------------------------------
       // 2. GOOGLE SHEETS SYNC LOGIC (MODIFIED FOR OFFLINE QUEUE)
       // -------------------------------------------------------------------
-      // ZAROORI NOTE: Agar aap naya deployment banate hain, to is URL ko zaroor badlen.
+      // ZAROORI NOTE: Is URL ko aapke bataye hue URL se update kar diya gaya hai.
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
       // NEW HELPER FUNCTION: Add to Queue
@@ -1376,7 +1376,7 @@
       quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
 
       recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
-          div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sort-key));
+          div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
       });
 
       // -------------------------------------------------------------------
