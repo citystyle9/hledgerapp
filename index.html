@@ -514,7 +514,7 @@
   <script>
     (function(){
       // -------------------------------------------------------------------
-      // 1. DOM References and Constants (MODIFIED)
+      // 1. DOM References and Constants
       // -------------------------------------------------------------------
       const overlay = document.getElementById('modal-overlay');
       const deleteOverlay = document.getElementById('delete-overlay');
@@ -830,10 +830,8 @@
           else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
           else amountColor = `color:var(--success);font-weight:700`;
 
-          // Date ko clean format mein show karne ke liye:
-          // Agar date ek full Date Object hai (restore ke baad), to use isoFormat se format karen.
-          // Agar string hai (jo naye entries mein hota hai), to jaisa hai waisa hi rehne den.
-          const displayDate = (rec.date instanceof Date) ? isoFormat(rec.date) : rec.date;
+          // Date ko seedha string use karen. Restore function mein ab Date Object ko string mein convert kar diya gaya hai.
+          const displayDate = rec.date;
 
 
           row.innerHTML = `
@@ -904,8 +902,8 @@
 
           editingId = guid;
           title.textContent = `Edit ${record.account}`;
-          // EDIT: Date value set karne se pehle use clean format mein convert karen
-          dateInput.value = (record.date instanceof Date) ? isoFormat(record.date) : record.date;
+          // EDIT: Date value set karne se pehle usay string format mein use karen
+          dateInput.value = record.date;
           accountSelect.value = record.account;
           descInput.value = record.desc;
           amtInput.value = record.amount;
@@ -958,7 +956,7 @@
 
           const newRecord = {
               guid: editingId || generateGuid(),
-              date: dateInput.value,
+              date: dateInput.value, // Date is saved as YYYY-MM-DD string
               account: account,
               desc: descInput.value.trim(),
               amount: amount.toFixed(2), 
@@ -1009,35 +1007,31 @@
       }
 
       // -------------------------------------------------------------------
-      // 7. Filtering and Sorting (DATE OBJECT FIX APPLIED HERE)
+      // 7. Filtering and Sorting 
       // -------------------------------------------------------------------
       function applyFilters() {
           const searchVal = filterSearch.value.toLowerCase();
           const accountFilter = filterAccount.value;
           
-          // Dates ko Date Objects mein convert karen
+          // Dates ko string (YYYY-MM-DD) mein len.
           const fromDateStr = filterFrom.value;
           const toDateStr = filterTo.value;
           
-          // Agar dates maujood hain, toh unhe Date Object mein convert karen.
-          // Timezone issues se bachne ke liye set to midnight UTC:
+          // Date objects banayein sirf comparison ke liye (UTC midnight set)
           const fromDateObj = fromDateStr ? new Date(fromDateStr + 'T00:00:00Z') : null;
-          const toDateObj = toDateStr ? new Date(toDateStr + 'T00:00:00Z') : null;
+          // To date ko end of day (23:59:59Z) set karein taake woh date bhi shamil ho
+          const toDateObj = toDateStr ? new Date(toDateStr + 'T23:59:59Z') : null; 
           
           // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals ---
           let dateFilteredList = store.records.filter(r => {
-              // Har record ki date ko bhi Date Object mein convert karen.
-              // Timezone issues se bachne ke liye set to midnight UTC:
-              // Agar rec.date object hai (restore ke baad), toh direct use karen, warna string ko parse karen.
-              const recordDateObj = (r.date instanceof Date) ? r.date : new Date(r.date + 'T00:00:00Z');
+              // Har record ki date string ko Date Object mein convert karen (UTC midnight set)
+              const recordDateObj = new Date(r.date + 'T00:00:00Z');
               
               if (fromDateObj) {
-                 // Check if record date is BEFORE the start date (Less than)
                  if (recordDateObj < fromDateObj) return false;
               }
               if (toDateObj) {
-                 // Check if record date is AFTER the end date (Greater than)
-                 // Note: We need to include the end date, so we use > for strict check
+                 // Check if record date is AFTER the end date
                  if (recordDateObj > toDateObj) return false;
               }
               return true;
@@ -1204,6 +1198,14 @@
                       store.logs = data.logs || [];
                       pendingSyncQueue = data.pendingSync || []; 
                       
+                      // Ensure restored records are in string format for consistency
+                      store.records = store.records.map(r => {
+                          if (r.date instanceof Date) {
+                              r.date = isoFormat(r.date);
+                          }
+                          return r;
+                      });
+
                       store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
                       calculateGlobalTotals();
                       alert(`Successfully restored ${data.records.length} records from local file.`);
@@ -1258,22 +1260,22 @@
 
             try {
               if (response && Array.isArray(response.records)) {
-                // Ensure dates are parsed as Date objects for robust filtering
+                
+                // IMPORTANT FIX: Convert Date Object back to YYYY-MM-DD string for display/filtering
                 store.records = response.records.map(r => {
-                    // Convert date string back to Date object for robust filtering, 
-                    // otherwise keep it as a string if it's already a clean YYYY-MM-DD
-                    if (typeof r.date === 'string' && r.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        // Create a Date object set to midnight UTC for comparison stability
-                        r.date = new Date(r.date + 'T00:00:00Z'); 
-                    }
-                    return r;
-                });
+                    // Agar date ek Date Object ban chuki hai, toh usko wapas YYYY-MM-DD string mein convert karen
+                    if (r.date instanceof Date) {
+                         r.date = isoFormat(r.date); 
+                    } 
+                    // Filter: Only keep 'Active' records (The App Script should already do this, but this is a safeguard)
+                    return r.status === 'Active' ? r : null; 
+                }).filter(r => r !== null); // Remove null entries (deleted/edited)
                 
                 pendingSyncQueue = []; // Clear queue on full restore
-                store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${response.records.length} records loaded.`);
+                store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${store.records.length} records loaded.`);
                 calculateGlobalTotals(); // Recalculate everything after restore
                 if (!isAutoLoad) { // Only show alert on manual restore
-                    alert(`Successfully restored ${response.records.length} records from Google Sheet.`);
+                    alert(`Successfully restored ${store.records.length} active records from Google Sheet.`);
                 }
                 addLog(`[${nowTsForLog()}] Sheet Restore completed successfully.`);
               } else if (response && response.error) {
