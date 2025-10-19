@@ -568,7 +568,6 @@
       // -------------------------------------------------------------------
       // 2. GOOGLE SHEETS SYNC LOGIC
       // -------------------------------------------------------------------
-      // MAKE SURE TO UPDATE THIS URL AFTER DEPLOYING YOUR APPS SCRIPT
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
       // NEW HELPER FUNCTION: Add to Queue
@@ -830,14 +829,9 @@
           else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
           else amountColor = `color:var(--success);font-weight:700`;
 
-          // Date ko clean format mein show karne ke liye:
-          // Agar date ek full Date Object hai (restore ke baad), to use isoFormat se format karen.
-          // Agar string hai (jo naye entries mein hota hai), to jaisa hai waisa hi rehne den.
-          const displayDate = (rec.date instanceof Date) ? isoFormat(rec.date) : rec.date;
-
 
           row.innerHTML = `
-            <div>${displayDate}</div> 
+            <div>${rec.date}</div>
             <div>${rec.account}</div>
             <div>${rec.desc}</div>
             <div style="${amountColor}">${formatAmount(rec.amount,rec.sign)}</div>
@@ -904,8 +898,7 @@
 
           editingId = guid;
           title.textContent = `Edit ${record.account}`;
-          // EDIT: Date value set karne se pehle use clean format mein convert karen
-          dateInput.value = (record.date instanceof Date) ? isoFormat(record.date) : record.date;
+          dateInput.value = record.date;
           accountSelect.value = record.account;
           descInput.value = record.desc;
           amtInput.value = record.amount;
@@ -1028,8 +1021,7 @@
           let dateFilteredList = store.records.filter(r => {
               // Har record ki date ko bhi Date Object mein convert karen.
               // Timezone issues se bachne ke liye set to midnight UTC:
-              // Agar rec.date object hai (restore ke baad), toh direct use karen, warna string ko parse karen.
-              const recordDateObj = (r.date instanceof Date) ? r.date : new Date(r.date + 'T00:00:00Z');
+              const recordDateObj = new Date(r.date + 'T00:00:00Z');
               
               if (fromDateObj) {
                  // Check if record date is BEFORE the start date (Less than)
@@ -1258,17 +1250,7 @@
 
             try {
               if (response && Array.isArray(response.records)) {
-                // Ensure dates are parsed as Date objects for robust filtering
-                store.records = response.records.map(r => {
-                    // Convert date string back to Date object for robust filtering, 
-                    // otherwise keep it as a string if it's already a clean YYYY-MM-DD
-                    if (typeof r.date === 'string' && r.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                        // Create a Date object set to midnight UTC for comparison stability
-                        r.date = new Date(r.date + 'T00:00:00Z'); 
-                    }
-                    return r;
-                });
-                
+                store.records = response.records;
                 pendingSyncQueue = []; // Clear queue on full restore
                 store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${response.records.length} records loaded.`);
                 calculateGlobalTotals(); // Recalculate everything after restore
