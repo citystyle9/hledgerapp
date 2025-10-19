@@ -601,7 +601,7 @@
               id: record.guid,
               date: record.date,
               description: record.desc,
-              amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
+              amount: record.account === 'Expense' ? -Number(record.amount) : Number(record.amount), 
               account: record.account || 'N/A',
               status: recordStatus
           };
@@ -1038,54 +1038,62 @@
           reader.readAsText(file);
       }
 
-      // MODIFIED: This function now handles 'Edit' status correctly.
+      // FINAL MODIFIED: This function now handles 'Edit' status correctly and has improved error checking.
       async function restoreFromSheet() {
           if (!confirm('Are you sure you want to replace ALL local data with data fetched from Google Sheets? (This will NOT delete local data/queue unless Sheets fetch is successful)')) {
               return;
           }
 
           try {
-              // 1. Fetch all records from the Sheet (using the Webhook but with a specific parameter for RESTORE/GET)
-              // NOTE: The Apps Script must be set up to handle 'GET' requests or 'POST' requests with a 'mode: restore' parameter
-              const response = await fetch(GOOGLE_SHEETS_WEBHOOK + '?mode=restore', { method: 'GET' });
-              const sheetRecords = await response.json();
+              // 1. Fetch all records from the Sheet
+              const restoreURL = GOOGLE_SHEETS_WEBHOOK + '?mode=restore';
+              
+              const response = await fetch(restoreURL, { method: 'GET' });
+              
+              // CHECK 1: Ensure the response is OK (HTTP 200-299)
+              if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}. Check Apps Script Deployment.`);
+              }
+              
+              // CHECK 2: Try to read JSON. If the response is HTML/Error page, this will fail.
+              const sheetRecords = await response.json(); 
 
-              if (!sheetRecords || sheetRecords.length === 0) {
-                  alert("Restore failed: Could not fetch data from Google Sheet. Check URL/Apps Script.");
-                  return;
+              if (!sheetRecords || !Array.isArray(sheetRecords)) {
+                  throw new Error("Could not fetch a valid array of records from Google Sheet.");
+              }
+              
+              if (sheetRecords.length === 0) {
+                    alert("Restore complete, but 0 records were found in the sheet data. Check your sheet data.");
+                    return;
               }
 
+
               // Filter out 'Deleted' records for initial restore base
-              let restoredRecords = sheetRecords.filter(r => r.status_normalized !== 'DELETED');
+              let restoredRecords = sheetRecords.filter(r => String(r.status_normalized).toUpperCase() !== 'DELETED');
               
               // 2. Normalize and Process Records - Use Map to ensure only the LATEST version (Edit overwrites Active) is kept for each GUID
               const finalRecordsMap = new Map();
               
               restoredRecords.forEach(sheetRec => {
-                  // Normalize the sheet record structure to match the local store's record structure
+                  // Normalize the sheet record structure
                   const localRec = {
                       date: sheetRec.date,
                       account: sheetRec.account,
                       desc: sheetRec.description,
-                      // The sign is derived from the positive/negative amount in the sheet.
-                      amount: Math.abs(Number(sheetRec.amount)).toFixed(2),
+                      // Get the absolute value for amount, as the sign (positive/negative in Sheet) is only used for account type check.
+                      amount: Math.abs(Number(sheetRec.amount)).toFixed(2), 
                       guid: sheetRec.id,
-                      status: sheetRec.status_normalized === 'EDIT' ? 'Edit' : 'Active'
+                      status: String(sheetRec.status_normalized).toUpperCase() === 'EDIT' ? 'Edit' : 'Active'
                   };
 
                   // Re-determine the account type based on amount sign from Sheet
                   if (localRec.account === 'N/A' || !localRec.account) {
-                      // Fallback: If no account type is specified, use the amount sign
                       localRec.account = (Number(sheetRec.amount) >= 0) ? 'Income' : 'Expense';
-                      // NOTE: We can't perfectly distinguish Loan from Income if both are positive, 
-                      // so we default to Income/Expense based on sign. Loan is a positive entry.
                   } else if (Number(sheetRec.amount) < 0 && localRec.account !== 'Expense') {
                       localRec.account = 'Expense'; // Force Expense if amount is negative
                   }
                   
-                  // This is the crucial step: The latest record for a GUID (whether Active or Edit) 
-                  // will overwrite any previous entry for that GUID in the Map.
-                  // This ensures that the Edited version is the one that remains.
+                  // The latest record for a GUID will overwrite any previous entry
                   finalRecordsMap.set(localRec.guid, localRec);
 
               });
@@ -1096,15 +1104,16 @@
               // 3. Final Replace and Update
               store.records = mergedRecords;
               store.logs = []; // Clear local logs on sheet restore for a clean start
-              pendingSyncQueue = []; // Clear pending queue as sheet data is the source of truth now
+              pendingSyncQueue = []; // Clear pending queue
 
               calculateGlobalTotals();
               addLog(`[${nowTsForLog()}] ☁️ Data restored from Google Sheet. (${mergedRecords.length} records)`);
-              alert(`Successfully restored ${mergedRecords.length} records from Google Sheet.`);
+              alert(`Successfully restored ${mergedRecords.length} active records from Google Sheet.`);
 
           } catch (e) {
               console.error('Full Sheet Restore Failed:', e);
-              alert('Restore failed due to an error. Check console for details, and ensure your Google Apps Script is set up correctly to handle "?mode=restore" GET requests.');
+              // Show a detailed error in the alert
+              alert(`Restore failed due to an error: ${e.message}. Please check your Google Apps Script Deployment URL and permissions (Must be 'Anyone').`);
           }
       }
 
@@ -1273,6 +1282,7 @@
                   desc: item.description,
                   amount: Math.abs(item.amount),
                   account: item.account,
+                  // Sign determination logic for pending sync is simple
                   sign: (item.amount < 0 || item.account === 'Expense') ? 'expense' : 'income' 
               };
               return sendRecordToSheets(dummyRecord, item.status);
