@@ -162,6 +162,14 @@ function renderLogs(){
   });
 }
 
+function addLog(entry){
+  store.logs.unshift(entry);
+  if(store.logs.length>500) store.logs.length = 500;
+  // NOTE: Calling renderLogs and saveToStorage is application logic
+  renderLogs();
+  saveToStorage(); 
+}
+
 // -------------------------------------------------------------------
 // 3. Theme Functions
 // -------------------------------------------------------------------
@@ -206,6 +214,7 @@ function openModal(action) {
     
     accountSelect.disabled = true;
     saveBtn.className = 'btn-save ' + action;
+    saveBtn.textContent = 'Save'; // Ensure text is 'Save' for new entry
     
     overlay.classList.add('show');
     descInput.focus();
@@ -225,7 +234,8 @@ function openEdit(guid) {
     
     accountSelect.disabled = false;
     saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-
+    saveBtn.textContent = 'Update'; // New: Change button text to 'Update' for edit
+    
     overlay.classList.add('show');
     descInput.focus();
 }
@@ -250,6 +260,7 @@ function closeModal() {
     resetOverlay.classList.remove('show');
     editingId = null;
     document.querySelector('details.menu').open = false; 
+    saveBtn.textContent = 'Save'; // Reset button text on close
 }
 
 function saveRecord() {
@@ -266,8 +277,8 @@ function saveRecord() {
     const sign = (account === 'Expense') ? 'expense' : 'positive';
     let logAction;
 
-    // Determine the status for the sheet: 'Edit' if editing, 'Active' if new
-    const sheetStatus = editingId ? 'Edit' : 'Active'; 
+    // Updated: Status is 'Modified' if editing, 'Created' if new
+    const sheetStatus = editingId ? 'Modified' : 'Created'; 
 
     const newRecord = {
         guid: editingId || generateGuid(),
