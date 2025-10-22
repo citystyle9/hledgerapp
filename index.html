@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HomeLedger v1.5.3</title>
+  
+  <link rel="manifest" href="/hledgerapp/manifest.json" />
+  
+  <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap" id="app">
+    <div class="topbar">
+      <div class="brand">HomeLedger</div>
+      <div class="controls">
+        <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
+        <details class="menu">
+          <summary>⋮</summary>
+          <div class="dropdown">
+            <button id="btn-log">📜 View Activity Log</button>
+            <button id="btn-reset">⚠️ Delete All Data</button>
+            <button id="btn-backup">Backup</button>
+            <button id="btn-restore">Restore from Local File</button>
+            <button id="btn-restore-sheet" style="font-weight:700; color:var(--accent);">☁️ Restore from Sheet</button>
+            <button id="btn-export">Export CSV</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="left-col">
+
+        <div class="balance-card" id="balance-card">
+          <div class="balance-left">
+            <div style="font-size:13px;color:var(--muted)">Current Balance (Total)</div>
+            <div class="big" id="current-balance">Rs 0</div>
+            <div class="summary-item" style="color:var(--accent)">Filtered: <span id="summary-filtered-balance">Rs 0</span></div>
+          </div>
+          <div class="balance-right" style="display:flex;gap:12px;align-items:center">
+            <div class="summary-item"><strong>Income:</strong> <span id="sum-income" style="color:var(--success);font-weight:700">Rs 0</span></div>
+            <div class="summary-item"><strong>Loan:</strong> <span id="sum-loan" style="color:var(--warning);font-weight:700">Rs 0</span></div>
+            <div class="summary-item"><strong>Expense:</strong> <span id="sum-expense" style="color:var(--danger);font-weight:700">Rs 0</span></div>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:10px">
+          <button class="big-btn income" data-action="income">+ Add Income</button>
+          <button class="big-btn loan" data-action="loan">+ Add Loan</button>
+          <button class="big-btn expense" data-action="expense">+ Add Expense</button>
+        </div>
+
+        <div class="filter-card" style="margin-top:10px">
+          <strong>Filter Records</strong>
+          
+          <div class="filter-row">
+            <input id="filter-search" type="text" placeholder="Search by description or amount">
+            
+            <select id="filter-account">
+              <option>All Accounts</option>
+              <option>Income</option>
+              <option>Loan</option>
+              <option>Expense</option>
+            </select>
+
+            <div class="quick-filters">
+              <button id="quick-today">Today</button>
+              <button id="quick-yesterday">Yesterday</button>
+              <button id="quick-month">Current Month</button>
+              <button id="quick-fiscal">Fiscal Year</button>
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <input id="filter-from" type="date">
+              <input id="filter-to" type="date">
+            </div>
+          </div>
+        </div>
+
+        <section class="records" id="records-section" style="margin-top:10px">
+          <div class="records-head">
+            <div data-sort-key="date" data-sort-order="desc">Date</div>
+            <div data-sort-key="account">Account</div>
+            <div>Description</div>
+            <div data-sort-key="amount">Amount</div>
+            <div>Action</div>
+          </div>
+          </section>
+
+      </div>
+    </div>
+
+    <footer>HomeLedger v1.5.3</footer> 
+  </div>
+
+  <div class="overlay" id="log-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>📜 Activity Log</h2>
+      <div id="activity-log-modal" class="log-list"></div>
+      <div class="actions-row" style="margin-top:8px">
+        <button class="btn-cancel" id="log-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="modal-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 id="modal-title">Add New Entry</h2>
+      <div>
+        <label for="entry-date">Date</label>
+        <input id="entry-date" type="date" required/>
+      </div>
+      <div style="margin-top:8px">
+        <label for="entry-account">Account</label>
+        <select id="entry-account">
+          <option>Income</option>
+          <option>Loan</option>
+          <option>Expense</option>
+        </select>
+      </div>
+      <div style="margin-top:8px">
+        <label for="entry-desc">Description</label>
+        <input id="entry-desc" type="text" placeholder="e.g. Salary, Fuel, Phone bill" required/>
+      </div>
+      <div class="row-2" style="margin-top:8px">
+        <div>
+          <label for="entry-amount">Amount</label>
+          <input id="entry-amount" type="number" min="0.01" step="any" placeholder="0" required/>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="modal-cancel">Cancel</button>
+        <button class="btn-save" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="overlay" id="delete-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
+      <div class="delete-modal-content">
+        <p>Are you sure you want to permanently delete the following record?</p>
+        <div class="record-details" id="delete-record-details"></div>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="delete-cancel">Cancel</button>
+        <button class="btn-save btn-delete-confirm" id="delete-confirm-btn" data-id="">Delete</button>
+      </div>
+      </div>
+  </div>
+
+  <div class="overlay" id="reset-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 style="color:var(--danger)">⚠️ Confirm Full Reset</h2>
+      <div class="delete-modal-content">
+        <p><strong>This action cannot be undone.</strong> All your financial records, activity logs, and settings will be permanently deleted and the app will restart empty.</p>
+        <p>We recommend you create a **Backup (JSON)** before proceeding.</p>
+      </div>
+      <div class="actions-row">
+        <button class="btn-cancel" id="reset-cancel">Cancel</button>
+        <button class="btn-save btn-delete-confirm" id="reset-confirm-btn">Yes, Delete All Data</button>
+      </div>
+    </div>
+  </div>
+
+
+  <input id="restore-file" class="hidden-file" type="file" accept="application/json" />
+
+  <script src="utils.js"></script>
+  <script src="data-service.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
