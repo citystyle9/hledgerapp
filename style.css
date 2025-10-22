@@ -1,0 +1,340 @@
+/* ------------------------------------------------------------------- */
+/* 1. CSS Variables and Theme Setup */
+/* ------------------------------------------------------------------- */
+:root{
+  /* CORE COLORS */
+  --bg:#0a0d14; 
+  --panel:#1f2937;
+  --glass-border:#4b5563;
+  --muted:#f3f4f6; 
+  
+  /* UTILITY COLORS */
+  --accent:#60a5fa; --success:#34d399; --warning:#fbbf24; --danger:#ef4444;
+  
+  /* SEMANTIC VARIABLES */
+  --text-color: var(--muted);
+  --input-bg: var(--bg); 
+  --input-border: var(--glass-border);
+  --focus-outline-color: var(--accent);
+  --active-filter-bg: var(--accent);
+
+  --font:Inter,ui-sans-serif,system-ui; --gap:12px;
+}
+
+body[data-theme="light"]{
+  --bg:#f9fafb; 
+  --panel:#ffffff; 
+  --glass-border:#e5e7eb; 
+  --muted:#111827; 
+  
+  --accent:#2563eb; --success:#059669; --warning:#b45309; --danger:#b91c1c;
+  
+  --text-color: var(--muted);
+  --input-bg: var(--ffffff); 
+  --input-border: var(--glass-border);
+  --focus-outline-color: var(--accent); 
+  --active-filter-bg: var(--accent);
+  
+  color:var(--text-color);
+}
+
+/* ------------------------------------------------------------------- */
+/* 2. General Styles and Layout */
+/* ------------------------------------------------------------------- */
+body{background:var(--bg);color:var(--text-color);font-family:var(--font);margin:0;padding:0;display:flex;justify-content:center;padding:14px;transition:background .2s,color .2s}
+.wrap{width:100%;max-width:920px;padding:12px;display:flex;flex-direction:column;gap:var(--gap)}
+
+.topbar, .balance-card, .filter-card, .records, .modal{
+    background:var(--panel);
+    border:1px solid var(--glass-border);
+    border-radius:6px;
+    box-shadow: none;
+}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
+.brand{font-weight:700}
+.controls{display:flex;gap:8px;align-items:center}
+details.menu{position:relative}
+details summary{cursor:pointer;padding:2px 6px}
+details .dropdown{position:absolute;right:0;top:28px;background:var(--panel);color:inherit;border-radius:6px;padding:6px;border:1px solid var(--glass-border)}
+details .dropdown button{display:block;width:100%;text-align:left;padding:6px;border:none;background:transparent;color:inherit;cursor:pointer}
+details .dropdown button#btn-reset {
+    color: var(--danger);
+    font-weight: 700;
+    border-top: 1px solid var(--glass-border);
+    margin-top: 4px;
+    padding-top: 8px;
+}
+
+.balance-card{padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.balance-left .big{font-size:18px;font-weight:800;color:var(--accent)}
+.summary-item{font-size:13px}
+.actions{display:flex;flex-direction:column;gap:8px}
+
+/* Button Styles */
+.big-btn{width:100%;padding:10px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:14px}
+.big-btn.income{background:var(--success);color:#fff}
+.big-btn.loan{background:var(--warning);color:#111}
+.big-btn.expense{background:var(--danger);color:#fff}
+
+.filter-card{padding:10px}
+.filter-row{display:flex;flex-direction:column;gap:6px}
+
+/* Input/Select Styles & FOCUS FIX */
+input,select{
+    width:100%;padding:8px;border-radius:6px;
+    border:1px solid var(--input-border);
+    background:var(--input-bg); 
+    color:var(--text-color); 
+    box-sizing: border-box; 
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, select:focus, button:focus{
+    outline: none;
+    border-color: var(--focus-outline-color);
+    box-shadow: 0 0 0 2px var(--focus-outline-color);
+}
+/* Disabled state style */
+select:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Date Picker Fixes (Calendar Icon & Text) */
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="date"]::-webkit-datetime-edit-literal { 
+    color: var(--text-color);
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(0.9);
+    cursor: pointer;
+}
+body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: none;
+}
+
+/* ------------------------------------------------------------------- */
+/* 3. Quick Filter Styles (UX FIX) */
+/* ------------------------------------------------------------------- */
+.quick-filters{
+  display:flex;
+  flex-wrap: wrap; 
+  gap:6px;
+  margin-top: 2px; 
+  margin-bottom: 2px; 
+}
+.quick-filters button{
+  flex: 1 1 auto; 
+  padding: 6px 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg); 
+  color: var(--text-color);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.2s;
+}
+.quick-filters button:hover{
+  background: var(--glass-border);
+}
+.quick-filters button.active {
+    background: var(--active-filter-bg);
+    color: var(--bg);
+    border-color: var(--active-filter-bg);
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------------------- */
+/* 4. Records & Sorting Styles (FEATURE FIX) */
+/* ------------------------------------------------------------------- */
+.records{overflow:hidden}
+.records-head{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;font-weight:700;background:rgba(255,255,255,0.08);border-bottom:1px solid var(--glass-border)}
+
+.records-head > div {
+    cursor: pointer;
+    padding-right: 15px;
+    position: relative;
+}
+.records-head > div:hover {
+    opacity: 0.8;
+}
+.records-head > div[data-sort-order]::after {
+    content: ' ';
+    position: absolute;
+    right: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+}
+.records-head > div[data-sort-order="asc"]::after {
+    content: '▲';
+}
+.records-head > div[data-sort-order="desc"]::after {
+    content: '▼';
+}
+
+.record-row{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;border-bottom:1px solid var(--glass-border);align-items:center}
+.record-actions button{background:none;border:none;color:var(--text-color);cursor:pointer;transition:color 0.1s}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 10px;
+    color: var(--glass-border);
+    font-size: 14px;
+}
+
+footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
+
+/* ------------------------------------------------------------------- */
+/* 5. Modals and Delete Confirmation (UX FIX) */
+/* ------------------------------------------------------------------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:none;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}
+.overlay.show{display:flex}
+.modal{
+    width:100%;max-width:560px;
+    background:var(--panel);
+    border:1px solid var(--glass-border);
+    border-radius:8px;
+    padding:16px;
+    box-shadow:0 6px 15px rgba(0,0,0,0.4);
+}
+
+.delete-modal-content {
+    padding: 10px 0;
+}
+.delete-modal-content p {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+}
+.delete-modal-content .record-details {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+/* Modal Button Styles */
+.modal h2{margin:0 0 8px 0;font-size:16px}
+.modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
+
+/* FIX: Input Zoom on iOS - Set font-size to 16px to prevent viewport zoom */
+.modal input[type="text"],.modal input[type="date"],.modal input[type="number"],.modal select{
+    width:100%;padding:10px;border-radius:6px;
+    border:1px solid var(--input-border);
+    background:var(--input-bg);
+    color:var(--text-color); 
+    box-sizing: border-box; 
+    font-size: 16px; /* <-- THE FIX */
+}
+.modal .row-2{display:block;} 
+.modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.btn-cancel{background:transparent;border:1px solid var(--glass-border);color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer}
+.btn-save{padding:8px 12px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
+.btn-save.income{background:var(--success);color:#fff}
+.btn-save.loan{background:var(--warning);color:#111}
+.btn-save.expense{background:var(--danger);color:#fff}
+.btn-delete-confirm { background: var(--danger); color: #fff; }
+
+.log-list{max-height:400px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.log-item{font-size:13px;background:rgba(255,255,255,0.08);padding:8px;border-radius:6px}
+
+/* ------------------------------------------------------------------- */
+/* 6. Media Queries & Scrollbar Fixes (MOBILE FIX APPLIED HERE) */
+/* ------------------------------------------------------------------- */
+@media (max-width:860px){.main-grid{grid-template-columns:1fr}}
+@media (max-width:420px){
+  .balance-card { flex-direction: column; align-items: stretch; }
+  .balance-right { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .quick-filters button { flex: 1 1 48%; }
+  
+  /* FIX: Records Table on Mobile - Show Date, Description, Amount, Action */
+  .records-head, .record-row {
+      /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
+      /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
+      grid-template-columns: 80px 1fr 90px 50px;
+  }
+  
+  /* 1. Hide Account (2nd item) */
+  .records-head div:nth-child(2), .record-row div:nth-child(2) {
+      display: none; 
+  }
+  
+  /* 2. Ensure Description (3rd item) is fully visible and takes 1fr */
+  .records-head div:nth-child(3), .record-row div:nth-child(3) {
+      align-items: center; 
+      word-break: break-word; 
+      white-space: normal;
+  }
+  
+  /* 3. Ensure Amount (4rd item) is visible and aligned */
+  .records-head div:nth-child(4), .record-row div:nth-child(4) {
+      align-items: center;
+      justify-content: flex-end; /* Align amount to the right */
+  }
+
+  /* 4. Ensure Action (5th item) is visible and centered */
+  .records-head div:nth-child(5), .record-row div:nth-child(5) {
+      align-items: center;
+      justify-content: center;
+  }
+  
+  /* 5. Ensure Date (1st item) is visible and aligned */
+  .records-head div:nth-child(1), .record-row div:nth-child(1) {
+      align-items: center;
+      justify-content: flex-start;
+  }
+}
+
+/* THEME ICON HIGHLIGHT CSS START */
+.theme-toggle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 40px; 
+  height: 20px;
+  padding: 0;
+  border-radius: 12px;
+  border:1px solid var(--glass-border);
+  cursor:pointer;
+  background:transparent;
+  position: relative;
+  font-size: 14px;
+  overflow: hidden; 
+}
+/* Set icon based on current theme */
+.theme-toggle::before {
+    content: '🌙'; /* Default is Dark Mode, so show Moon (switch to Sun) */
+    color: var(--text-color);
+    position: absolute;
+    transition: transform 0.2s ease-in-out;
+}
+body[data-theme="light"] .theme-toggle::before {
+    content: '☀️'; /* Light Mode, so show Sun (switch to Moon) */
+    transform: translateX(0);
+}
+/* THEME ICON HIGHLIGHT CSS END */
+
+.hidden-file{display:none}
+
+.log-list::-webkit-scrollbar, body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.log-list::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+.log-list::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 4px;
+}
+.log-list::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+}
+/* ------------------------------------------------------------------- */
