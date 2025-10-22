@@ -7,6 +7,7 @@ const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1';
 const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
 let store = { records: [], logs: [] };
+let pendingSyncQueue = []; 
 
 // -------------------------------------------------------------------
 // 2. Persistence & Logging
