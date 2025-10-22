@@ -1,0 +1,22 @@
+{
+  "name": "HomeLedger",
+  "short_name": "HomeLedger",
+  
+  "start_url": "/hledgerapp/",
+  
+  "display": "standalone",
+  "background_color": "#0a0d14",
+  "theme_color": "#60a5fa",
+  "icons": [
+    {
+      "src": "/hledgerapp/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/hledgerapp/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
