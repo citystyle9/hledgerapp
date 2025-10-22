@@ -30,8 +30,8 @@ function getFiscalYearDates(){
     const d = new Date();
     const year = d.getFullYear();
     const month = d.getMonth(); 
-    if (month >= 6) { startYear = year; endYear = year + 1; } 
-    else { startYear = year - 1; endYear = year; }
+    const startYear = month >= 6 ? year : year - 1; 
+    const endYear = month >= 6 ? year + 1 : year;
     const fromDate = new Date(startYear, 6, 1); 
     const toDate = new Date(endYear, 5, 30);   
     return { from: isoFormat(fromDate), to: isoFormat(toDate) };
