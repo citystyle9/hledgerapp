@@ -7,7 +7,6 @@ const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1';
 const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
 let store = { records: [], logs: [] };
-let pendingSyncQueue = []; 
 
 // -------------------------------------------------------------------
 // 2. Persistence & Logging
@@ -83,7 +82,8 @@ function addToPendingQueue(record, recordStatus) {
     addLog(`[${nowTsForLog()}] 💾 Pending Sync: ${recordStatus} request for ${record.desc}. Added to queue.`);
 }
 
-async function sendRecordToSheets(record, recordStatus = 'Active') { 
+// Updated: Default status is 'Created'
+async function sendRecordToSheets(record, recordStatus = 'Created') { 
     if (!record || record.amount === 0) return;
     
     const sheetData = {
@@ -221,9 +221,9 @@ function restoreDataFromSheets(isAutoLoad) {
               if (r.date instanceof Date) {
                    r.date = isoFormat(r.date); 
               } 
-              // Filter: Only keep 'Active' records (The App Script should already do this, but this is a safeguard)
+              // Updated: Check for 'CREATED' or 'MODIFIED' status
               const statusNorm = (r.status_normalized || String(r.status || '').toUpperCase()).toUpperCase();
-              return (statusNorm === 'ACTIVE' || statusNorm === 'EDIT') ? r : null; 
+              return (statusNorm === 'CREATED' || statusNorm === 'MODIFIED') ? r : null; 
           }).filter(r => r !== null); // Remove null entries (deleted/edited)
           
           pendingSyncQueue = []; // Clear queue on full restore
