@@ -1,8 +1,14 @@
-const CACHE_NAME = 'homeledger-v1.5.2'; // <<-- یہ لائن اپ ڈیٹ کر دی گئی ہے۔
+const CACHE_NAME = 'homeledger-v1.5.3'; // Updated to match app version
 const urlsToCache = [
   '/hledgerapp/', // روٹ URL کو کیچ کرتا ہے (Github Pages URL)
   '/hledgerapp/index.html', // آپ کی مین فائل
   '/hledgerapp/manifest.json',
+  '/hledgerapp/style.css', // New: CSS file
+  '/hledgerapp/app.js', // New: Main application script
+  '/hledgerapp/data-service.js', // New: Data logic script
+  '/hledgerapp/utils.js', // New: Helper functions
+  '/hledgerapp/service-worker.js', // New: Cache itself
+  '/hledgerapp/offline.html', // New: Offline fallback page
   // آئیکنز کو بھی کیچ کرنا ضروری ہے
   '/hledgerapp/icons/icon-192x192.png',
   '/hledgerapp/icons/icon-512x512.png'
@@ -65,7 +71,8 @@ self.addEventListener('fetch', event => {
       })
       .catch(error => {
           console.error('Fetch failed:', error);
-          // یہاں آپ ایک آف لائن Fallback Page بھی شامل کر سکتے ہیں
+          // New: Offline Fallback Page added here
+          return caches.match('/hledgerapp/offline.html');
       })
   );
 });
