@@ -162,13 +162,8 @@ function renderLogs(){
   });
 }
 
-function addLog(entry){
-  store.logs.unshift(entry);
-  if(store.logs.length>500) store.logs.length = 500;
-  // NOTE: Calling renderLogs and saveToStorage is application logic
-  renderLogs();
-  saveToStorage(); 
-}
+// NOTE: addLog function logic has been moved to data-service.js in the modular structure.
+// The reference here is assumed to call the globally available function from data-service.js.
 
 // -------------------------------------------------------------------
 // 3. Theme Functions
@@ -234,7 +229,7 @@ function openEdit(guid) {
     
     accountSelect.disabled = false;
     saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-    saveBtn.textContent = 'Update'; // New: Change button text to 'Update' for edit
+    saveBtn.textContent = 'Update'; // FIX: Change button text to 'Update' for edit
     
     overlay.classList.add('show');
     descInput.focus();
@@ -277,7 +272,7 @@ function saveRecord() {
     const sign = (account === 'Expense') ? 'expense' : 'positive';
     let logAction;
 
-    // Updated: Status is 'Modified' if editing, 'Created' if new
+    // FIX: Status is 'Modified' if editing, 'Created' if new
     const sheetStatus = editingId ? 'Modified' : 'Created'; 
 
     const newRecord = {
