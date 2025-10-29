@@ -2,7 +2,7 @@
   "name": "HomeLedger",
   "short_name": "HomeLedger",
   
-  "start_url": "/hledgerapp/",
+  "start_url": "./",
   
   "display": "standalone",
   "background_color": "#0a0d14",
