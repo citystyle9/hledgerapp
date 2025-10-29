@@ -37,24 +37,24 @@
 
         <div class="balance-card" id="balance-card">
           <div class="balance-left">
-            <div style="font-size:13px;color:var(--muted)">Current Balance (Total)</div>
+            <div class="muted-text">Current Balance (Total)</div>
             <div class="big" id="current-balance">Rs 0</div>
-            <div class="summary-item" style="color:var(--accent)">Filtered: <span id="summary-filtered-balance">Rs 0</span></div>
+            <div class="summary-filtered">Filtered: <span id="summary-filtered-balance">Rs 0</span></div>
           </div>
-          <div class="balance-right" style="display:flex;gap:12px;align-items:center">
-            <div class="summary-item"><strong>Income:</strong> <span id="sum-income" style="color:var(--success);font-weight:700">Rs 0</span></div>
-            <div class="summary-item"><strong>Loan:</strong> <span id="sum-loan" style="color:var(--warning);font-weight:700">Rs 0</span></div>
-            <div class="summary-item"><strong>Expense:</strong> <span id="sum-expense" style="color:var(--danger);font-weight:700">Rs 0</span></div>
+          <div class="balance-right">
+            <div class="summary-item"><strong>Income:</strong> <span id="sum-income" class="success-text">Rs 0</span></div>
+            <div class="summary-item"><strong>Loan:</strong> <span id="sum-loan" class="warning-text">Rs 0</span></div>
+            <div class="summary-item"><strong>Expense:</strong> <span id="sum-expense" class="danger-text">Rs 0</span></div>
           </div>
         </div>
 
-        <div class="actions" style="margin-top:10px">
+        <div class="actions">
           <button class="big-btn income" data-action="income">+ Add Income</button>
           <button class="big-btn loan" data-action="loan">+ Add Loan</button>
           <button class="big-btn expense" data-action="expense">+ Add Expense</button>
         </div>
 
-        <div class="filter-card" style="margin-top:10px">
+        <div class="filter-card">
           <strong>Filter Records</strong>
           
           <div class="filter-row">
@@ -74,14 +74,14 @@
               <button id="quick-fiscal">Fiscal Year</button>
             </div>
 
-            <div style="display:flex;gap:8px">
+            <div class="date-range">
               <input id="filter-from" type="date">
               <input id="filter-to" type="date">
             </div>
           </div>
         </div>
 
-        <section class="records" id="records-section" style="margin-top:10px">
+        <section class="records" id="records-section">
           <div class="records-head">
             <div data-sort-key="date" data-sort-order="desc">Date</div>
             <div data-sort-key="account">Account</div>
@@ -101,7 +101,7 @@
     <div class="modal" role="dialog" aria-modal="true">
       <h2>📜 Activity Log</h2>
       <div id="activity-log-modal" class="log-list"></div>
-      <div class="actions-row" style="margin-top:8px">
+      <div class="actions-row">
         <button class="btn-cancel" id="log-close">Close</button>
       </div>
     </div>
@@ -114,7 +114,7 @@
         <label for="entry-date">Date</label>
         <input id="entry-date" type="date" required/>
       </div>
-      <div style="margin-top:8px">
+      <div class="modal-spacing">
         <label for="entry-account">Account</label>
         <select id="entry-account">
           <option>Income</option>
@@ -122,11 +122,11 @@
           <option>Expense</option>
         </select>
       </div>
-      <div style="margin-top:8px">
+      <div class="modal-spacing">
         <label for="entry-desc">Description</label>
         <input id="entry-desc" type="text" placeholder="e.g. Salary, Fuel, Phone bill" required/>
       </div>
-      <div class="row-2" style="margin-top:8px">
+      <div class="row-2" class="modal-spacing">
         <div>
           <label for="entry-amount">Amount</label>
           <input id="entry-amount" type="number" min="0.01" step="any" placeholder="0" required/>
@@ -141,7 +141,7 @@
   
   <div class="overlay" id="delete-overlay" role="dialog" aria-hidden="true">
     <div class="modal" role="document" aria-modal="true">
-      <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
+      <h2 class="danger-text">🗑️ Confirm Deletion</h2>
       <div class="delete-modal-content">
         <p>Are you sure you want to permanently delete the following record?</p>
         <div class="record-details" id="delete-record-details"></div>
@@ -155,7 +155,7 @@
 
   <div class="overlay" id="reset-overlay" role="dialog" aria-hidden="true">
     <div class="modal" role="document" aria-modal="true">
-      <h2 style="color:var(--danger)">⚠️ Confirm Full Reset</h2>
+      <h2 class="danger-text">⚠️ Confirm Full Reset</h2>
       <div class="delete-modal-content">
         <p><strong>This action cannot be undone.</strong> All your financial records, activity logs, and settings will be permanently deleted and the app will restart empty.</p>
         <p>We recommend you create a **Backup (JSON)** before proceeding.</p>
