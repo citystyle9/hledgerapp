@@ -35,19 +35,24 @@ function loadFromStorage(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){ 
         const parsed = JSON.parse(raw); 
-        if(parsed.records) store.records = parsed.records; 
-        if(parsed.logs) store.logs = parsed.logs; 
+        store.records = Array.isArray(parsed.records) ? parsed.records : [];
+        store.logs = Array.isArray(parsed.logs) ? parsed.logs : [];
     }
     
     const rawPending = localStorage.getItem(PENDING_SYNC_KEY);
     if(rawPending) {
-        pendingSyncQueue = JSON.parse(rawPending);
+        pendingSyncQueue = Array.isArray(JSON.parse(rawPending)) ? JSON.parse(rawPending) : [];
     }
     
     const rawSort = localStorage.getItem(SORT_KEY);
-    if(rawSort) currentSort = JSON.parse(rawSort);
+    if(rawSort) currentSort = JSON.parse(rawSort) || { key: 'date', order: 'desc' };
 
-  }catch(e){}
+  }catch(e){
+    store.records = [];
+    store.logs = [];
+    pendingSyncQueue = [];
+    currentSort = { key: 'date', order: 'desc' };
+  }
 }
 
 function addLog(entry){
@@ -102,7 +107,7 @@ async function sendRecordToSheets(record, recordStatus = 'Created') {
                 method: 'POST',
                 mode: 'no-cors', 
                 headers: {
-                    'Content-Type': 'text/plain', 
+                    'Content-Type': 'application/json', 
                 },
                 body: JSON.stringify(data)
             });
@@ -147,7 +152,7 @@ async function attemptPendingSync() {
             const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
                 mode: 'no-cors', 
-                headers: { 'Content-Type': 'text/plain' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
             
@@ -218,6 +223,9 @@ function restoreDataFromSheets(isAutoLoad) {
           
           // IMPORTANT FIX: Convert Date Object back to YYYY-MM-DD string for display/filtering
           store.records = response.records.map(r => {
+              if (!r || typeof r.date !== 'string' || typeof r.account !== 'string' || typeof r.desc !== 'string' || isNaN(Number(r.amount))) {
+                return null;
+              }
               // Agar date ek Date Object ban chuki hai, toh usko wapas YYYY-MM-DD string mein convert karen
               if (r.date instanceof Date) {
                    r.date = isoFormat(r.date); 
