@@ -45,6 +45,14 @@ const SORT_KEY = 'homeledger_sort_v1';
 const VERSION_TAG = 'HomeLedger v1.5.3'; 
 let currentSort = { key: 'date', order: 'desc' }; // This is set via loadFromStorage in data-service
 
+function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
+
 // -------------------------------------------------------------------
 // 2. Rendering, Logging, and Summary 
 // -------------------------------------------------------------------
@@ -52,7 +60,7 @@ let currentSort = { key: 'date', order: 'desc' }; // This is set via loadFromSto
 function calculateGlobalTotals(){
     let income = 0, loan = 0, expense = 0;
     store.records.forEach(r=>{
-        const amount = Number(r.amount || 0);
+        const amount = isNaN(Number(r.amount)) ? 0 : Number(r.amount);
         if(r.account === 'Income') income += amount;
         else if(r.account === 'Loan') loan += amount;
         else if(r.account === 'Expense') expense += amount;
@@ -72,7 +80,7 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
     // 1. Calculate Income/Loan/Expense Summary Totals based on DATE FILTERED LIST
     let income = 0, loan = 0, expense = 0;
     dateFilteredList.forEach(r=>{
-        const amount = Number(r.amount || 0);
+        const amount = isNaN(Number(r.amount)) ? 0 : Number(r.amount);
         if(r.account === 'Income') income += amount;
         else if(r.account === 'Loan') loan += amount;
         else if(r.account === 'Expense') expense += amount;
@@ -87,7 +95,7 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
     // 2. Calculate Filtered Balance based on FULL FILTERED LIST
     let fullIncome = 0, fullLoan = 0, fullExpense = 0;
     fullFilteredList.forEach(r=>{
-      const amount = Number(r.amount || 0);
+      const amount = isNaN(Number(r.amount)) ? 0 : Number(r.amount);
       if(r.account === 'Income') fullIncome += amount;
       else if(r.account === 'Loan') fullLoan += amount;
       else if(r.account === 'Expense') fullExpense += amount;
@@ -132,332 +140,263 @@ function renderRecordsList(list){
     const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.guid;
     
     let amountColor;
-    if(rec.sign === 'expense') amountColor = `color:var(--danger);font-weight:700`;
-    else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
-    else amountColor = `color:var(--success);font-weight:700`;
+    if(rec.sign === 'positive') amountColor = 'var(--success)';
+    else if(rec.sign === 'loan') amountColor = 'var(--warning)';
+    else amountColor = 'var(--danger)';
 
-    // Date ko seedha string use karen. Restore function mein ab Date Object ko string mein convert kar diya gaya hai.
-    const displayDate = rec.date;
+    const dateDiv = document.createElement('div');
+    dateDiv.textContent = rec.date;
+    row.appendChild(dateDiv);
 
+    const accountDiv = document.createElement('div');
+    accountDiv.textContent = rec.account;
+    row.appendChild(accountDiv);
 
-    row.innerHTML = `
-      <div>${displayDate}</div> 
-      <div>${rec.account}</div>
-      <div>${rec.desc}</div>
-      <div style="${amountColor}">${formatAmount(rec.amount,rec.sign)}</div>
-      <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
-    `;
-    row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.guid));
-    row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid));
+    const descDiv = document.createElement('div');
+    descDiv.textContent = rec.desc;
+    row.appendChild(descDiv);
+
+    const amountDiv = document.createElement('div');
+    amountDiv.style.color = amountColor;
+    amountDiv.textContent = formatAmount(rec.amount, rec.sign);
+    row.appendChild(amountDiv);
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'record-actions';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.onclick = () => openDeleteModal(rec.guid);
+    actionsDiv.appendChild(deleteBtn);
+
+    row.appendChild(actionsDiv);
+
     recordsSection.appendChild(row);
   });
 }
 
 function renderLogs(){
-  const logModalList = document.getElementById('activity-log-modal');
-  logModalList.innerHTML = '';
-  store.logs.forEach(entry=>{
-    const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
-    logModalList.appendChild(div);
+  const logDiv = document.getElementById('activity-log-modal');
+  logDiv.innerHTML = '';
+  store.logs.forEach(log=>{
+    const item = document.createElement('div');
+    item.className = 'log-item';
+    item.textContent = log;
+    logDiv.appendChild(item);
   });
 }
 
-// NOTE: addLog function logic has been moved to data-service.js in the modular structure.
-// The reference here is assumed to call the globally available function from data-service.js.
+// -------------------------------------------------------------------
+// 3. Modal and Record Operations 
+// -------------------------------------------------------------------
+
+let currentAction = '';
+let currentEditId = null;
+
+function openModal(action){
+  currentAction = action;
+  currentEditId = null;
+  title.textContent = `Add New ${capitalize(action)}`;
+  accountSelect.value = capitalize(action);
+  accountSelect.disabled = true;
+  dateInput.value = isoToday();
+  descInput.value = '';
+  amtInput.value = '';
+  saveBtn.className = 'btn-save ' + action;
+  overlay.classList.add('show');
+}
+
+function closeModal(){
+  overlay.classList.remove('show');
+  deleteOverlay.classList.remove('show');
+  resetOverlay.classList.remove('show');
+}
+
+function saveRecord(){
+  const date = dateInput.value;
+  const desc = descInput.value.trim();
+  const amount = Number(amtInput.value);
+
+  if(!date || !desc || isNaN(amount) || amount <= 0){
+    alert('Please fill all fields with valid data.');
+    return;
+  }
+
+  const record = {
+    guid: currentEditId || generateGuid(),
+    date,
+    account: accountSelect.value,
+    desc,
+    amount: amount.toFixed(2),
+    sign: currentAction === 'expense' ? 'negative' : (currentAction === 'loan' ? 'loan' : 'positive')
+  };
+
+  if(currentEditId){
+    const index = store.records.findIndex(r => r.guid === currentEditId);
+    if(index > -1){
+      store.records[index] = record;
+      addLog(`[${nowTsForLog()}] Record modified: ${desc} (${record.account}) Rs ${amount.toFixed(2)}`);
+      sendRecordToSheets(record, 'Modified');
+    }
+  } else {
+    store.records.push(record);
+    addLog(`[${nowTsForLog()}] New record added: ${desc} (${record.account}) Rs ${amount.toFixed(2)}`);
+    sendRecordToSheets(record);
+  }
+
+  calculateGlobalTotals();
+  closeModal();
+}
+
+function openDeleteModal(id){
+  const rec = store.records.find(r => r.guid === id);
+  if(!rec) return;
+
+  deleteDetailsDiv.innerHTML = `
+    <strong>Date:</strong> ${rec.date}<br>
+    <strong>Account:</strong> ${rec.account}<br>
+    <strong>Description:</strong> ${rec.desc}<br>
+    <strong>Amount:</strong> Rs ${Number(rec.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+  `;
+
+  deleteConfirmBtn.dataset.id = id;
+  deleteOverlay.classList.add('show');
+}
+
+function deleteRecord(id){
+  const index = store.records.findIndex(r => r.guid === id);
+  if(index > -1){
+    const rec = store.records[index];
+    store.records.splice(index, 1);
+    addLog(`[${nowTsForLog()}] Record deleted: ${rec.desc} (${rec.account}) Rs ${rec.amount}`);
+    sendRecordToSheets(rec, 'Deleted');
+  }
+
+  const queueIndex = pendingSyncQueue.findIndex(item => item.id === id);
+  if (queueIndex > -1) {
+    pendingSyncQueue.splice(queueIndex, 1);
+  }
+
+  calculateGlobalTotals();
+  closeModal();
+}
+
+function deleteAllData(){
+  store.records = [];
+  store.logs = [];
+  pendingSyncQueue = [];
+  localStorage.clear();
+  addLog(`[${nowTsForLog()}] All data deleted and app reset.`);
+  calculateGlobalTotals();
+  closeModal();
+}
 
 // -------------------------------------------------------------------
-// 3. Theme Functions
+// 4. Theme Toggle 
 // -------------------------------------------------------------------
+
 function applyTheme(theme){
-  if(theme === 'light') {
-      document.body.setAttribute('data-theme','light');
-      themeToggle.title = 'Switch to Dark Mode';
-      themeToggle.textContent = ''; 
-  }
-  else {
-      document.body.removeAttribute('data-theme');
-      themeToggle.title = 'Switch to Light Mode';
-      themeToggle.textContent = ''; 
-  }
-  try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+  document.body.dataset.theme = theme;
+  localStorage.setItem(THEME_KEY, theme);
 }
 
 function toggleTheme(){
-  const cur = localStorage.getItem(THEME_KEY) || 'dark';
-  const next = (cur === 'dark') ? 'light' : 'dark';
-  applyTheme(next);
-  addLog(`[${nowTsForLog()}] Theme changed to ${next}`);
-}
-
-// -------------------------------------------------------------------
-// 4. Record Management (UI / Modal Interaction) 
-// -------------------------------------------------------------------
-let editingId = null;
-
-function openModal(action) {
-    editingId = null;
-    let account = action.charAt(0).toUpperCase() + action.slice(1);
-    if (account === 'Expense') account = 'Expense';
-    if (account === 'Loan') account = 'Loan';
-    if (account === 'Income') account = 'Income'; 
-
-    title.textContent = `Add New ${account}`;
-    accountSelect.value = account;
-    dateInput.value = isoToday();
-    descInput.value = '';
-    amtInput.value = '';
-    
-    accountSelect.disabled = true;
-    saveBtn.className = 'btn-save ' + action;
-    saveBtn.textContent = 'Save'; // Ensure text is 'Save' for new entry
-    
-    overlay.classList.add('show');
-    descInput.focus();
-}
-
-function openEdit(guid) {
-    const record = store.records.find(r => r.guid === guid);
-    if (!record) return;
-
-    editingId = guid;
-    title.textContent = `Edit ${record.account}`;
-    // EDIT: Date value set karne se pehle usay string format mein use karen
-    dateInput.value = record.date;
-    accountSelect.value = record.account;
-    descInput.value = record.desc;
-    amtInput.value = record.amount;
-    
-    accountSelect.disabled = false;
-    saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-    saveBtn.textContent = 'Update'; // FIX: Change button text to 'Update' for edit
-    
-    overlay.classList.add('show');
-    descInput.focus();
-}
-
-function openDeleteConfirm(guid) {
-    const record = store.records.find(r => r.guid === guid);
-    if (!record) return;
-    
-    deleteConfirmBtn.dataset.id = guid;
-    deleteDetailsDiv.innerHTML = `
-        <strong>Date:</strong> ${record.date}<br>
-        <strong>Account:</strong> ${record.account}<br>
-        <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
-        <strong>Description:</strong> ${record.desc}
-    `;
-    deleteOverlay.classList.add('show');
-}
-
-function closeModal() {
-    overlay.classList.remove('show');
-    deleteOverlay.classList.remove('show');
-    resetOverlay.classList.remove('show');
-    editingId = null;
-    document.querySelector('details.menu').open = false; 
-    saveBtn.textContent = 'Save'; // Reset button text on close
-}
-
-function saveRecord() {
-    if (!dateInput.value || !descInput.value || !amtInput.value) {
-        alert('Please fill in all fields (Date, Description, Amount).');
-        return;
-    }
-    const amount = Number(amtInput.value);
-    if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid amount.');
-        return;
-    }
-    const account = accountSelect.value;
-    const sign = (account === 'Expense') ? 'expense' : 'positive';
-    let logAction;
-
-    // FIX: Status is 'Modified' if editing, 'Created' if new
-    const sheetStatus = editingId ? 'Modified' : 'Created'; 
-
-    const newRecord = {
-        guid: editingId || generateGuid(),
-        date: dateInput.value, // Date is saved as YYYY-MM-DD string
-        account: account,
-        desc: descInput.value.trim(),
-        amount: amount.toFixed(2), 
-        sign: sign,
-    };
-
-    if (editingId) {
-        const index = store.records.findIndex(r => r.guid === editingId);
-        if (index !== -1) {
-            const oldRecord = store.records[index];
-            store.records[index] = newRecord;
-            logAction = `[${nowTsForLog()}] EDITED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} changed to ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
-        }
-    } else {
-        store.records.push(newRecord);
-        logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
-    }
-    
-    sendRecordToSheets(newRecord, sheetStatus); // Pass the determined status
-    
-    addLog(logAction);
-    calculateGlobalTotals();
-    closeModal();
-}
-
-function deleteRecord(guid) {
-    const index = store.records.findIndex(r => r.guid === guid);
-    if (index === -1) return;
-
-    const deletedRecord = store.records.splice(index, 1)[0];
-    
-    sendRecordToSheets(deletedRecord, 'Deleted'); 
-
-    addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
-    calculateGlobalTotals();
-    closeModal();
-}
-
-function deleteAllData() {
-    // FIX: Removed local definitions and now relying on global pendingSyncQueue from data-service.js
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(PENDING_SYNC_KEY); 
-    store.records = [];
-    pendingSyncQueue = [];
-    store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`];
-    calculateGlobalTotals();
-    closeModal();
-    location.reload(); 
+  const current = document.body.dataset.theme || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
 // -------------------------------------------------------------------
 // 5. Filtering and Sorting 
 // -------------------------------------------------------------------
-function applyFilters() {
-    const searchVal = filterSearch.value.toLowerCase();
-    const accountFilter = filterAccount.value;
-    
-    // Dates ko string (YYYY-MM-DD) mein len.
-    const fromDateStr = filterFrom.value;
-    const toDateStr = filterTo.value;
-    
-    // Date objects banayein sirf comparison ke liye (UTC midnight set)
-    const fromDateObj = fromDateStr ? new Date(fromDateStr + 'T00:00:00Z') : null;
-    // To date ko end of day (23:59:59Z) set karein taake woh date bhi shamil ho
-    const toDateObj = toDateStr ? new Date(toDateStr + 'T23:59:59Z') : null; 
-    
-    // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals ---
-    let dateFilteredList = store.records.filter(r => {
-        // Har record ki date string ko Date Object mein convert karen (UTC midnight set)
-        const recordDateObj = new Date(r.date + 'T00:00:00Z');
-        
-        if (fromDateObj) {
-           if (recordDateObj < fromDateObj) return false;
-        }
-        if (toDateObj) {
-           // Check if record date is AFTER the end date
-           if (recordDateObj > toDateObj) return false;
-        }
-        return true;
-    });
-    
-    // --- 2. Filter List by ALL criteria for Records List and Filtered Balance ---
-    let fullFilteredList = dateFilteredList.filter(r => {
-        // Account Filter
-        if (accountFilter !== 'All Accounts' && r.account !== accountFilter) return false;
 
-        // Search Filter (Description or Amount)
-        if (searchVal) {
-            const matchesDesc = r.desc.toLowerCase().includes(searchVal);
-            const matchesAmount = String(r.amount).includes(searchVal);
-            if (!matchesDesc && !matchesAmount) return false;
-        }
-
-        return true;
-    });
-    
-    // 3. Sorting (Applies only to the final list for rendering)
-    fullFilteredList.sort(sortRecords);
-    
-    // 4. Calculate summary and render the filtered list
-    recalcSummaryAndRender(dateFilteredList, fullFilteredList);
+function handleSortClick(key){
+  if (currentSort.key === key) {
+      currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+  } else {
+      currentSort.key = key;
+      currentSort.order = 'desc';
+  }
+  applyFilters();
 }
 
-function sortRecords(a, b) {
-    const key = currentSort.key;
-    const order = currentSort.order;
-    let valA = a[key];
-    let valB = b[key];
+function applyFilters(){
+  let filtered = [...store.records];
 
-    if (key === 'amount') {
-        valA = Number(valA);
-        valB = Number(valB);
-    }
-    
-    let comparison = 0;
-    if (valA > valB) comparison = 1;
-    else if (valA < valB) comparison = -1;
+  // Date Filter
+  const fromDate = filterFrom.value ? new Date(filterFrom.value) : null;
+  const toDate = filterTo.value ? new Date(filterTo.value) : null;
+  if (fromDate || toDate) {
+      filtered = filtered.filter(r => {
+          const rDate = new Date(r.date);
+          return (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate);
+      });
+  }
 
-    return order === 'asc' ? comparison : comparison * -1;
+  const dateFilteredList = [...filtered];
+
+  // Account Filter
+  const selectedAccount = filterAccount.value;
+  if (selectedAccount !== 'All Accounts') {
+      filtered = filtered.filter(r => r.account === selectedAccount);
+  }
+
+  // Search Filter
+  const searchTerm = filterSearch.value.toLowerCase();
+  if (searchTerm) {
+      filtered = filtered.filter(r => 
+          r.desc.toLowerCase().includes(searchTerm) || 
+          r.amount.toString().includes(searchTerm)
+      );
+  }
+
+  // Sort
+  filtered.sort((a, b) => {
+      let valA = a[currentSort.key];
+      let valB = b[currentSort.key];
+      if (currentSort.key === 'amount') {
+          valA = Number(valA);
+          valB = Number(valB);
+      } else if (currentSort.key === 'date') {
+          valA = new Date(valA);
+          valB = new Date(valB);
+      }
+      if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
+      if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
+      return 0;
+  });
+
+  recalcSummaryAndRender(dateFilteredList, filtered);
 }
 
-function handleSortClick(key) {
-    if (currentSort.key === key) {
-        currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
-    } else {
-        currentSort.key = key;
-        currentSort.order = 'desc';
-    }
-    
-    // Reset other header indicators
-    recordsHead.querySelectorAll('div').forEach(div => {
-        if (div.dataset.sortKey !== key) {
-            div.removeAttribute('data-sort-order');
-        }
-    });
-    
-    // Set current header indicator
-    const currentHeader = recordsHead.querySelector(`div[data-sort-key="${key}"]`);
-    if (currentHeader) {
-        currentHeader.setAttribute('data-sort-order', currentSort.order);
-    }
-    
-    applyFilters();
-    saveToStorage(); 
-}
+function applyQuickFilter(type){
+  Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
 
-function applyQuickFilter(type) {
-    filterFrom.value = '';
-    filterTo.value = '';
-    
-    Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+  const today = new Date();
+  let from = isoToday();
+  let to = isoToday();
 
-    const today = new Date();
-    let from, to;
+  if (type === 'today') {
+      quickFilterButtons.today.classList.add('active');
+  } else if (type === 'yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      from = to = isoFormat(yesterday);
+      quickFilterButtons.yesterday.classList.add('active');
+  } else if (type === 'month') {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      from = isoFormat(startOfMonth);
+      to = isoFormat(today); 
+      quickFilterButtons.month.classList.add('active');
+  } else if (type === 'fiscal') {
+      const dates = getFiscalYearDates();
+      from = dates.from;
+      to = dates.to;
+      quickFilterButtons.fiscal.classList.add('active');
+  }
 
-    if (type === 'today') {
-        from = isoFormat(today);
-        to = isoFormat(today);
-        quickFilterButtons.today.classList.add('active');
-    } else if (type === 'yesterday') {
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        from = isoFormat(yesterday);
-        to = isoFormat(yesterday);
-        quickFilterButtons.yesterday.classList.add('active');
-    } else if (type === 'month') {
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        from = isoFormat(startOfMonth);
-        to = isoFormat(today); 
-        quickFilterButtons.month.classList.add('active');
-    } else if (type === 'fiscal') {
-        const dates = getFiscalYearDates();
-        from = dates.from;
-        to = dates.to;
-        quickFilterButtons.fiscal.classList.add('active');
-    }
-
-    filterFrom.value = from;
-    filterTo.value = to;
-    applyFilters();
+  filterFrom.value = from;
+  filterTo.value = to;
+  applyFilters();
 }
 
 // -------------------------------------------------------------------
@@ -574,7 +513,7 @@ function setupEventListeners() {
   restoreFileInput.addEventListener('change', restoreData);
 
   // Filtering Events (Only call applyFilters)
-  filterSearch.addEventListener('input', applyFilters);
+  filterSearch.addEventListener('input', debounce(applyFilters, 300));
   filterAccount.addEventListener('change', applyFilters);
   filterFrom.addEventListener('change', applyFilters);
   filterTo.addEventListener('change', applyFilters);
@@ -619,6 +558,10 @@ function init(){
     addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
 
     setupEventListeners();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/hledgerapp/service-worker.js');
+    }
 }
 
-init();
+document.addEventListener('DOMContentLoaded', init);
