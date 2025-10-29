@@ -1,30 +1,31 @@
 const CACHE_NAME = 'homeledger-v1.5.3'; // Updated to match app version
+const basePath = '/hledgerapp/';
 const urlsToCache = [
-  '/hledgerapp/', // روٹ URL کو کیچ کرتا ہے (Github Pages URL)
-  '/hledgerapp/index.html', // آپ کی مین فائل
-  '/hledgerapp/manifest.json',
-  '/hledgerapp/style.css', // New: CSS file
-  '/hledgerapp/app.js', // New: Main application script
-  '/hledgerapp/data-service.js', // New: Data logic script
-  '/hledgerapp/utils.js', // New: Helper functions
-  '/hledgerapp/service-worker.js', // New: Cache itself
-  '/hledgerapp/offline.html', // New: Offline fallback page
-  // آئیکنز کو بھی کیچ کرنا ضروری ہے
-  '/hledgerapp/icons/icon-192x192.png',
-  '/hledgerapp/icons/icon-512x512.png'
+  basePath, // Root URL for Github Pages
+  basePath + 'index.html', // Main file
+  basePath + 'manifest.json',
+  basePath + 'style.css', // New: CSS file
+  basePath + 'app.js', // New: Main application script
+  basePath + 'data-service.js', // New: Data logic script
+  basePath + 'utils.js', // New: Helper functions
+  basePath + 'service-worker.js', // New: Cache itself
+  basePath + 'offline.html', // New: Offline fallback page
+  // Icons must also be cached
+  basePath + 'icons/icon-192x192.png',
+  basePath + 'icons/icon-512x512.png'
 ];
 
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing...');
-  // ایپ کو انسٹال کرتے وقت تمام ضروری فائلیں کیش میں محفوظ کی جاتی ہیں
+  // When installing the app, all necessary files are saved in the cache
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('[Service Worker] Pre-caching assets.');
-        // تمام URLs کو کیش میں شامل کریں
+        // Add all URLs to the cache
         return cache.addAll(urlsToCache);
       })
-      .then(() => self.skipWaiting()) // Worker کو فورا activate کرنے کے لیے
+      .then(() => self.skipWaiting()) // To activate the worker immediately
       .catch(err => {
         console.error('[Service Worker] Caching failed:', err);
       })
@@ -33,46 +34,46 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating...');
-  // پرانے caches کو ہٹانا
+  // Remove old caches
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          // صرف وہی کیش ہٹائیں جو موجودہ CACHE_NAME سے مختلف ہے
+          // Only delete caches that are different from the current CACHE_NAME
           if (cacheName !== CACHE_NAME) {
             console.log('[Service Worker] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim()) // یقینی بناتا ہے کہ worker تمام tabs کو کنٹرول کرے
+    }).then(() => self.clients.claim()) // Ensures the worker controls all tabs
   );
 });
 
 self.addEventListener('fetch', event => {
-  // اگر درخواست ایک نیویگیشن ہے (یعنی نیا صفحہ کھولا جا رہا ہے)
+  // If the request is a navigation (i.e., opening a new page)
   if (event.request.mode === 'navigate') {
-    // کیش سے index.html کو serve کریں
-    event.respondWith(caches.match('/hledgerapp/index.html').catch(() => fetch(event.request)));
+    // Serve index.html from cache
+    event.respondWith(caches.match(basePath + 'index.html').catch(() => caches.match(basePath + 'offline.html')));
     return;
   }
   
-  // باقی تمام فائلوں (CSS, JS, Icons) کے لیے، پہلے کیش میں دیکھیں
+  // For all other files (CSS, JS, Icons), check the cache first
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // اگر کیش میں فائل موجود ہے تو اسے واپس کر دیا جاتا ہے (آف لائن کام)
+        // If the file is in the cache, it is returned (offline work)
         if (response) {
             return response;
         }
         
-        // اگر کیش میں نہیں ہے تو نیٹ ورک سے fetch کریں
+        // If not in cache, fetch from network
         return fetch(event.request);
       })
       .catch(error => {
           console.error('Fetch failed:', error);
           // New: Offline Fallback Page added here
-          return caches.match('/hledgerapp/offline.html');
+          return caches.match(basePath + 'offline.html');
       })
   );
 });
