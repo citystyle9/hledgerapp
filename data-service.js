@@ -11,7 +11,7 @@ let pendingSyncQueue = [];
 // Global dependencies needed for persistence logic (must be declared in app.js scope)
 // Ensure these functions are accessible globally or passed in during initialization if required.
 // For modular simplicity, we rely on the functions existing in the global scope (i.e., imported before this file).
-/* global currentSort, showToast, addLog, saveToStorage, renderLogs, formatDate, isoFormat */
+/* global currentSort, showToast, addLog, saveToStorage, renderLogs, formatDate, isoFormat, calculateGlobalTotals */
 
 // -------------------------------------------------------------------
 // 2. Persistence & Logging
@@ -85,8 +85,8 @@ function addToPendingQueue(record, recordStatus) {
     addLog(`[${nowTsForLog()}] 💾 Pending Sync: ${recordStatus} request for ${record.desc}. Added to queue.`);
 }
 
-// Updated: Default status is 'Active'
-async function sendRecordToSheets(record, recordStatus = 'Active') { 
+// Improvement: Default status changed to 'CREATED'
+async function sendRecordToSheets(record, recordStatus = 'CREATED') { 
     if (!record || record.amount === 0) return;
     
     // Check if offline and queue immediately (2)
@@ -107,7 +107,7 @@ async function sendRecordToSheets(record, recordStatus = 'Active') {
     };
     async function attemptFetch(data) {
         try {
-            // FIX: Revert to 'no-cors' and 'text/plain' for reliability with Apps Script webhook
+            // FIX: Use 'no-cors' mode for reliability with Apps Script webhook
             await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
                 mode: 'no-cors', 
@@ -116,7 +116,7 @@ async function sendRecordToSheets(record, recordStatus = 'Active') {
                 },
                 body: JSON.stringify(data)
             });
-            // In no-cors mode, fetch succeeds even if server returns error, so we assume success here
+            // Assume success in no-cors mode, rely on Apps Script logs for errors
             return true; 
         } catch (error) {
             // This catch block only hits on network failure (offline/DNS/etc.)
@@ -161,7 +161,7 @@ async function attemptPendingSync() {
 
     for (const data of recordsToSync) {
         try {
-            // FIX: Revert to 'no-cors' and 'text/plain' for reliability with Apps Script webhook
+            // FIX: Use 'no-cors' mode for reliability with Apps Script webhook
             await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
                 mode: 'no-cors', 
@@ -245,8 +245,8 @@ function restoreDataFromSheets(isAutoLoad) {
                    r.date = isoFormat(r.date); 
         
               } 
-              // Fix Status Consistency: Use reliably normalized status for filtering
-              return (r.status_normalized === 'ACTIVE' || r.status_normalized === 'EDIT') ? r : null; 
+              // Improvement: Use new status keywords in filtering
+              return (r.status_normalized === 'CREATED' || r.status_normalized === 'UPDATED') ? r : null; 
           }).filter(r => r !== null);
           // Remove null entries (deleted/edited)
           
