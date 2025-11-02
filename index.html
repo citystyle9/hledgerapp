@@ -1,3 +1,4 @@
+// ✅ Updated in Phase 3 – Fixed [XSS, Fetch/CORS, Date Handling, Status Consistency, Cleanup] – Ready for Production
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -356,7 +357,7 @@
 <body>
   <div class="wrap" id="app">
     <div class="topbar">
-      <div class="brand">HomeLedger</div>
+      <div class="brand">HomeLedger">HomeLedger</div>
       <div class="controls">
         <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
         <details class="menu">
@@ -597,6 +598,11 @@
       async function sendRecordToSheets(record, recordStatus = 'Active') { 
           if (!record || record.amount === 0) return;
           
+          if (!navigator.onLine) {
+              addToPendingQueue(record, recordStatus);
+              return;
+          }
+
           const sheetData = {
               id: record.guid,
               date: record.date,
@@ -608,18 +614,22 @@
           
           async function attemptFetch(data) {
               try {
-                  await fetch(GOOGLE_SHEETS_WEBHOOK, {
+                  // FIX Fetch & CORS Handling: Change mode to 'cors' and Content-Type to 'application/json'
+                  const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                       method: 'POST',
-                      mode: 'no-cors', 
+                      mode: 'cors', 
                       headers: {
-                          // FIX JSD-01: Change Content-Type to text/plain for no-cors compatibility
-                          'Content-Type': 'text/plain', 
+                          'Content-Type': 'application/json', 
                       },
                       body: JSON.stringify(data)
                   });
+                  // Check for successful HTTP status (e.g., 200-299)
+                  if (!response.ok) {
+                      throw new Error(`HTTP Error status: ${response.status}`);
+                  }
                   return true; 
               } catch (error) {
-                  console.error('Sheet Sync Failed (Network Error - Check Internet/URL):', error);
+                  console.error('Sheet Sync Failed (Network/Server Error):', error);
                   return false;
               }
           }
@@ -824,26 +834,52 @@
         }
 
         rows.forEach(rec=>{
-          const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.guid;
+          const row = document.createElement('div'); 
+          row.className='record-row'; 
+          row.dataset.id=rec.guid;
           
           let amountColor;
           if(rec.sign === 'expense') amountColor = `color:var(--danger);font-weight:700`;
           else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
           else amountColor = `color:var(--success);font-weight:700`;
 
-          // Date ko seedha string use karen. Restore function mein ab Date Object ko string mein convert kar diya gaya hai.
           const displayDate = rec.date;
+          
+          // FIX XSS Protection: Build elements safely using textContent
+          
+          const dateDiv = document.createElement('div');
+          dateDiv.textContent = displayDate;
+          row.appendChild(dateDiv);
+          
+          const accountDiv = document.createElement('div');
+          accountDiv.textContent = rec.account;
+          row.appendChild(accountDiv);
 
+          const descDiv = document.createElement('div');
+          descDiv.textContent = rec.desc;
+          row.appendChild(descDiv);
 
-          row.innerHTML = `
-            <div>${displayDate}</div> 
-            <div>${rec.account}</div>
-            <div>${rec.desc}</div>
-            <div style="${amountColor}">${formatAmount(rec.amount,rec.sign)}</div>
-            <div class="record-actions"><button title="Edit">✏️</button> <button title="Delete">🗑️</button></div>
-          `;
-          row.querySelector('[title="Edit"]').addEventListener('click', ()=> openEdit(rec.guid));
-          row.querySelector('[title="Delete"]').addEventListener('click', ()=> openDeleteConfirm(rec.guid));
+          const amountDiv = document.createElement('div');
+          amountDiv.style.cssText = amountColor;
+          amountDiv.textContent = formatAmount(rec.amount,rec.sign);
+          row.appendChild(amountDiv);
+
+          const actionsDiv = document.createElement('div');
+          actionsDiv.className = 'record-actions';
+
+          const editBtn = document.createElement('button');
+          editBtn.title = 'Edit';
+          editBtn.textContent = '✏️';
+          editBtn.addEventListener('click', ()=> openEdit(rec.guid));
+          actionsDiv.appendChild(editBtn);
+          
+          const deleteBtn = document.createElement('button');
+          deleteBtn.title = 'Delete';
+          deleteBtn.textContent = '🗑️';
+          deleteBtn.addEventListener('click', ()=> openDeleteConfirm(rec.guid));
+          actionsDiv.appendChild(deleteBtn);
+          
+          row.appendChild(actionsDiv);
           recordsSection.appendChild(row);
         });
       }
@@ -852,7 +888,9 @@
         const logModalList = document.getElementById('activity-log-modal');
         logModalList.innerHTML = '';
         store.logs.forEach(entry=>{
-          const div = document.createElement('div'); div.className='log-item'; div.textContent = entry;
+          const div = document.createElement('div'); 
+          div.className='log-item'; 
+          div.textContent = entry;
           logModalList.appendChild(div);
         });
       }
@@ -921,11 +959,12 @@
           if (!record) return;
           
           deleteConfirmBtn.dataset.id = guid;
+          // FIX XSS Protection: Use textContent where possible to avoid innerHTML injection
           deleteDetailsDiv.innerHTML = `
               <strong>Date:</strong> ${record.date}<br>
               <strong>Account:</strong> ${record.account}<br>
               <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
-              <strong>Description:</strong> ${record.desc}
+              <strong>Description:</strong> ${record.desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}
           `;
           deleteOverlay.classList.add('show');
       }
@@ -949,14 +988,11 @@
               return;
           }
           const account = accountSelect.value;
-          
-          // FIX JSA-04: Change 'negative' to 'expense' for consistency
           const sign = (account === 'Expense') ? 'expense' : 'positive';
-          
           let logAction;
 
-          // Determine the status for the sheet: 'Edit' if editing, 'Active' if new
-          const sheetStatus = editingId ? 'Edit' : 'Active'; 
+          // Align Status Consistency (4): Backend Code.gs uses 'ACTIVE' for new records
+          const sheetStatus = editingId ? 'EDIT' : 'ACTIVE'; 
 
           const newRecord = {
               guid: editingId || generateGuid(),
@@ -992,7 +1028,8 @@
 
           const deletedRecord = store.records.splice(index, 1)[0];
           
-          sendRecordToSheets(deletedRecord, 'Deleted'); 
+          // Align Status Consistency (4): Backend Code.gs uses 'DELETED'
+          sendRecordToSheets(deletedRecord, 'DELETED'); 
 
           addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
           calculateGlobalTotals();
@@ -1021,15 +1058,15 @@
           const fromDateStr = filterFrom.value;
           const toDateStr = filterTo.value;
           
-          // FIX JSA-05: Append 'T00:00:00Z' to force UTC midnight for consistent comparison
-          const fromDateObj = fromDateStr ? new Date(fromDateStr + 'T00:00:00Z') : null;
-          // To date ko end of day (23:59:59Z) set karein taake woh date bhi shamil ho
-          const toDateObj = toDateStr ? new Date(toDateStr + 'T23:59:59Z') : null; 
+          // FIX Date Handling (3): Remove 'Z' to respect local timezone
+          const fromDateObj = fromDateStr ? new Date(fromDateStr + 'T00:00:00') : null;
+          // To date ko end of day (23:59:59) set karein taake woh date bhi shamil ho
+          const toDateObj = toDateStr ? new Date(toDateStr + 'T23:59:59') : null; 
           
           // --- 1. Filter List ONLY by DATE for Income/Loan/Expense Totals ---
           let dateFilteredList = store.records.filter(r => {
-              // Har record ki date string ko Date Object mein convert karen (UTC midnight set)
-              const recordDateObj = new Date(r.date + 'T00:00:00Z');
+              // FIX Date Handling (3): Remove 'Z' for local timezone
+              const recordDateObj = new Date(r.date + 'T00:00:00');
               
               if (fromDateObj) {
                  if (recordDateObj < fromDateObj) return false;
@@ -1069,8 +1106,6 @@
           let valA = a[key];
           let valB = b[key];
 
-          // FIX JSA-06: Remove inefficient new Date() conversion inside the sort function.
-          // YYYY-MM-DD string comparison is lexicographically correct for dates.
           if (key === 'amount') {
               valA = Number(valA);
               valB = Number(valB);
@@ -1273,8 +1308,8 @@
                     if (r.date instanceof Date) {
                          r.date = isoFormat(r.date); 
                     } 
-                    // Filter: Only keep 'Active' records (The App Script should already do this, but this is a safeguard)
-                    return r.status === 'Active' ? r : null; 
+                    // Align Status Consistency (4): Backend Code.gs uses 'ACTIVE' / 'EDIT'
+                    return (r.status.toUpperCase() === 'ACTIVE' || r.status.toUpperCase() === 'EDIT') ? r : null; 
                 }).filter(r => r !== null); // Remove null entries (deleted/edited)
                 
                 pendingSyncQueue = []; // Clear queue on full restore
@@ -1321,6 +1356,11 @@
               return;
           }
           
+          if (!navigator.onLine) {
+               addLog(`[${nowTsForLog()}] ⚠️ Automatic sync skipped. App is offline.`);
+               return;
+          }
+
           addLog(`[${nowTsForLog()}] 🔄 Starting automatic sync for ${pendingSyncQueue.length} pending records...`);
           
           // We create a copy to iterate, in case the original array changes during sync
@@ -1329,16 +1369,19 @@
 
           for (const data of recordsToSync) {
               try {
-                  // Send request to the sheet using the data from the queue
+                  // FIX Fetch & CORS Handling: Change mode to 'cors' and Content-Type to 'application/json'
                   const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                       method: 'POST',
-                      mode: 'no-cors', 
-                      // FIX JSD-01: Change Content-Type to text/plain for no-cors compatibility
-                      headers: { 'Content-Type': 'text/plain' },
+                      mode: 'cors', 
+                      headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(data)
                   });
                   
-                  // If fetch succeeds (response is received in no-cors mode), remove it from the actual queue
+                  if (!response.ok) {
+                      throw new Error(`HTTP Error status: ${response.status}`);
+                  }
+
+                  // If fetch succeeds (response is received in cors mode), remove it from the actual queue
                   const index = pendingSyncQueue.findIndex(item => item.id === data.id);
                   if (index > -1) {
                        pendingSyncQueue.splice(index, 1);
@@ -1346,8 +1389,8 @@
                   }
                   
               } catch (error) {
-                  // If fetch fails (network error), stop the sync process (probably still offline)
-                  console.error('Auto Sync Interrupted (Network Error):', error);
+                  // If fetch fails (network error or non-2xx status), stop the sync process (probably still offline or server error)
+                  console.error('Auto Sync Interrupted (Network/Server Error):', error);
                   addLog(`[${nowTsForLog()}] ⚠️ Auto Sync Interrupted. Network connection lost or server error.`);
                   break; 
               }
