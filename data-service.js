@@ -60,17 +60,6 @@ function loadFromStorage(){
   }
 }
 
-// NOTE: addLog function is moved to app.js to control rendering/saving, but kept here for completeness if required.
-/*
-function addLog(entry){
-  store.logs.unshift(entry);
-  if(store.logs.length>500) store.logs.length = 500;
-  // NOTE: Calling renderLogs and saveToStorage is application logic
-  renderLogs();
-  saveToStorage();
-}
-*/
-
 // -------------------------------------------------------------------
 // 3. Google Sheets Sync Logic
 // -------------------------------------------------------------------
@@ -118,20 +107,19 @@ async function sendRecordToSheets(record, recordStatus = 'Active') {
     };
     async function attemptFetch(data) {
         try {
-            // Fix Fetch & CORS Handling: mode: 'cors' and Content-Type: 'application/json'
-            const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
+            // FIX: Revert to 'no-cors' and 'text/plain' for reliability with Apps Script webhook
+            await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
-                mode: 'cors', 
+                mode: 'no-cors', 
                 headers: {
-                    'Content-Type': 'application/json', 
+                    'Content-Type': 'text/plain', 
                 },
                 body: JSON.stringify(data)
             });
-            if (!response.ok) {
-                throw new Error(`HTTP Error status: ${response.status}`);
-            }
+            // In no-cors mode, fetch succeeds even if server returns error, so we assume success here
             return true; 
         } catch (error) {
+            // This catch block only hits on network failure (offline/DNS/etc.)
             console.error('Sheet Sync Failed (Network/Server Error):', error);
             return false;
         }
@@ -173,19 +161,15 @@ async function attemptPendingSync() {
 
     for (const data of recordsToSync) {
         try {
-            // Fix Fetch & CORS Handling: mode: 'cors' and Content-Type: 'application/json'
-            const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
+            // FIX: Revert to 'no-cors' and 'text/plain' for reliability with Apps Script webhook
+            await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
-                mode: 'cors', 
-                headers: { 'Content-Type': 'application/json' },
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(data)
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP Error status: ${response.status}`);
-            }
-            
-            // If fetch succeeds, remove it from the actual queue
+            // If fetch succeeds (no-cors mode), remove it from the actual queue
             const index = pendingSyncQueue.findIndex(item => item.id === data.id);
             if (index > -1) {
                  pendingSyncQueue.splice(index, 1);
@@ -193,7 +177,7 @@ async function attemptPendingSync() {
             }
             
         } catch (error) {
-            // If fetch fails (network error or non-2xx status), stop the sync process 
+            // This catch block only hits on network failure, stopping the loop
             console.error('Auto Sync Interrupted (Network/Server Error):', error);
             addLog(`[${nowTsForLog()}] ⚠️ Auto Sync Interrupted. Network connection lost or server error.`);
             break;
