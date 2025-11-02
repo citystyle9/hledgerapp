@@ -330,9 +330,8 @@
         position: absolute;
         transition: transform 0.2s ease-in-out;
     }
-    body[data-theme="light"] .theme-toggle::before {
-        content: '☀️'; /* Light Mode, so show Sun (switch to Moon) */
-        transform: translateX(0);
+    body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: none;
     }
     /* THEME ICON HIGHLIGHT CSS END */
     
