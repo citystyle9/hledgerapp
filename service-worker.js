@@ -1,4 +1,5 @@
-const CACHE_NAME = 'homeledger-v1.5.3'; // Updated to match app version
+const CACHE_NAME = 'homeledger-v1.5.3';
+// Updated to match app version
 const basePath = '/hledgerapp/';
 const urlsToCache = [
   basePath, // Root URL for Github Pages
@@ -14,7 +15,6 @@ const urlsToCache = [
   basePath + 'icons/icon-192x192.png',
   basePath + 'icons/icon-512x512.png'
 ];
-
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing...');
   // When installing the app, all necessary files are saved in the cache
@@ -27,11 +27,11 @@ self.addEventListener('install', event => {
       })
       .then(() => self.skipWaiting()) // To activate the worker immediately
       .catch(err => {
+   
         console.error('[Service Worker] Caching failed:', err);
       })
   );
 });
-
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating...');
   // Remove old caches
@@ -42,6 +42,7 @@ self.addEventListener('activate', event => {
           // Only delete caches that are different from the current CACHE_NAME
           if (cacheName !== CACHE_NAME) {
             console.log('[Service Worker] Deleting old cache:', cacheName);
+            
             return caches.delete(cacheName);
           }
         })
@@ -49,7 +50,6 @@ self.addEventListener('activate', event => {
     }).then(() => self.clients.claim()) // Ensures the worker controls all tabs
   );
 });
-
 self.addEventListener('fetch', event => {
   // If the request is a navigation (i.e., opening a new page)
   if (event.request.mode === 'navigate') {
@@ -63,6 +63,7 @@ self.addEventListener('fetch', event => {
     caches.match(event.request)
       .then(response => {
         // If the file is in the cache, it is returned (offline work)
+     
         if (response) {
             return response;
         }
@@ -72,7 +73,7 @@ self.addEventListener('fetch', event => {
       })
       .catch(error => {
           console.error('Fetch failed:', error);
-          // New: Offline Fallback Page added here
+          // New: Offline Fallback Page added 
           return caches.match(basePath + 'offline.html');
       })
   );
