@@ -18,6 +18,16 @@ function isoToday(){
   const d = new Date();
   return isoFormat(d);
 }
+// Improvement: New function for display date format DD-MM-YYYY
+function formatDateDDMMYYYY(isoDateString) {
+    if (!isoDateString) return '';
+    try {
+        const parts = isoDateString.split('-'); // YYYY-MM-DD
+        return `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY
+    } catch(e) {
+        return isoDateString;
+    }
+}
 function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
