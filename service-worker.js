@@ -27,7 +27,6 @@ self.addEventListener('install', event => {
       })
       .then(() => self.skipWaiting()) // To activate the worker immediately
       .catch(err => {
-   
         console.error('[Service Worker] Caching failed:', err);
       })
   );
@@ -42,7 +41,6 @@ self.addEventListener('activate', event => {
           // Only delete caches that are different from the current CACHE_NAME
           if (cacheName !== CACHE_NAME) {
             console.log('[Service Worker] Deleting old cache:', cacheName);
-            
             return caches.delete(cacheName);
           }
         })
@@ -63,7 +61,6 @@ self.addEventListener('fetch', event => {
     caches.match(event.request)
       .then(response => {
         // If the file is in the cache, it is returned (offline work)
-     
         if (response) {
             return response;
         }
