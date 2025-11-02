@@ -351,6 +351,40 @@
         background: var(--muted);
     }
     /* ------------------------------------------------------------------- */
+    /* TOAST STYLES */
+    #toast-container {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .toast {
+        min-width: 250px;
+        padding: 10px 15px;
+        border-radius: 6px;
+        color: white;
+        text-align: center;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.3s, transform 0.3s;
+        transform: translateY(20px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    .toast.offline {
+        background-color: var(--danger);
+    }
+    .toast.online {
+        background-color: var(--success);
+    }
+    /* ------------------------------------------------------------------- */
   </style>
 </head>
 <body>
@@ -511,6 +545,8 @@
 
   <input id="restore-file" class="hidden-file" type="file" accept="application/json" />
 
+  <div id="toast-container"></div>
+
   <script>
     (function(){
       // -------------------------------------------------------------------
@@ -547,7 +583,8 @@
       const btnExport = document.getElementById('btn-export');
       const themeToggle = document.getElementById('theme-toggle'); 
       const restoreFileInput = document.getElementById('restore-file');
-      
+      const toastContainer = document.getElementById('toast-container'); // NEW
+
       const quickFilterButtons = {
           today: document.getElementById('quick-today'),
           yesterday: document.getElementById('quick-yesterday'),
@@ -571,6 +608,21 @@
       // MAKE SURE TO UPDATE THIS URL AFTER DEPLOYING YOUR APPS SCRIPT
       const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
 
+      // NEW HELPER FUNCTION: Toast Generator
+      function showToast(message, type = 'info', duration = 3000) {
+          const toast = document.createElement('div');
+          toast.className = `toast ${type}`;
+          toast.textContent = message;
+          toastContainer.appendChild(toast);
+          
+          setTimeout(() => toast.classList.add('show'), 10);
+
+          setTimeout(() => {
+              toast.classList.remove('show');
+              setTimeout(() => toast.remove(), 300);
+          }, duration);
+      }
+      
       // NEW HELPER FUNCTION: Add to Queue
       function addToPendingQueue(record, recordStatus) {
           const existingIndex = pendingSyncQueue.findIndex(item => item.id === record.guid);
@@ -1359,6 +1411,9 @@
                addLog(`[${nowTsForLog()}] ⚠️ Automatic sync skipped. App is offline.`);
                return;
           }
+          
+          // Toast: Show message when syncing starts
+          showToast('Connected! Syncing pending entries...', 'online', 5000);
 
           addLog(`[${nowTsForLog()}] 🔄 Starting automatic sync for ${pendingSyncQueue.length} pending records...`);
           
@@ -1406,8 +1461,23 @@
 
 
       // -------------------------------------------------------------------
-      // 10. Event Listeners
+      // 10. Event Listeners (Network State & Initialization)
       // -------------------------------------------------------------------
+      
+      // NEW: Event listener for online connection restore (1)
+      window.addEventListener('online', () => {
+          console.log('Internet connection restored — syncing queued records...');
+          // Auto-sync is triggered inside attemptPendingSync()
+          attemptPendingSync(); 
+      });
+
+      // NEW: Event listener for offline connection loss (2)
+      window.addEventListener('offline', () => {
+          console.log('Internet connection lost — operating in offline mode.');
+          // Toast: Show offline message (2)
+          showToast('Offline mode — entries will be queued.', 'offline', 6000);
+      });
+      
       
       document.querySelectorAll('.big-btn').forEach(btn => {
           btn.addEventListener('click', (e) => openModal(e.target.dataset.action));
@@ -1478,6 +1548,11 @@
           }
           
           addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
+          
+          // NEW: Initial offline check on load
+          if (!navigator.onLine) {
+              showToast('App loaded in Offline mode.', 'offline', 6000);
+          }
       }
       
       init();
