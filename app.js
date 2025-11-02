@@ -6,7 +6,7 @@ const deleteOverlay = document.getElementById('delete-overlay');
 const deleteCancelBtn = document.getElementById('delete-cancel');
 const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
 const deleteDetailsDiv = document.getElementById('delete-record-details');
-const resetOverlay = document.getElementById('reset-overlay'); 
+const resetOverlay = document.getElementById('reset-overlay');
 const resetCancelBtn = document.getElementById('reset-cancel'); 
 const resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
 const title = document.getElementById('modal-title');
@@ -32,17 +32,15 @@ const btnRestoreSheet = document.getElementById('btn-restore-sheet');
 const btnExport = document.getElementById('btn-export');
 const themeToggle = document.getElementById('theme-toggle'); 
 const restoreFileInput = document.getElementById('restore-file');
-
 const quickFilterButtons = {
     today: document.getElementById('quick-today'),
     yesterday: document.getElementById('quick-yesterday'),
     month: document.getElementById('quick-month'),
     fiscal: document.getElementById('quick-fiscal')
 };
-
 const THEME_KEY = 'homeledger_theme_v1';
 const SORT_KEY = 'homeledger_sort_v1';
-const VERSION_TAG = 'HomeLedger v1.5.3'; 
+const VERSION_TAG = 'HomeLedger v1.5.3';
 let currentSort = { key: 'date', order: 'desc' }; // This is set via loadFromStorage in data-service
 
 function debounce(fn, delay) {
@@ -65,12 +63,10 @@ function calculateGlobalTotals(){
         else if(r.account === 'Loan') loan += amount;
         else if(r.account === 'Expense') expense += amount;
     });
-    
     const globalBalance = (income + loan) - expense;
 
     // --- 1. Only Update Current Balance (Total) ---
     document.getElementById('current-balance').textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    
     applyFilters(); // Trigger filtering and rendering of all other summaries/list
     saveToStorage();
 }
@@ -85,13 +81,10 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
         else if(r.account === 'Loan') loan += amount;
         else if(r.account === 'Expense') expense += amount;
     });
-    
     // --- Update Income/Loan/Expense with DATE FILTERED amounts ---
     document.getElementById('sum-income').textContent = 'Rs ' + income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     document.getElementById('sum-loan').textContent = 'Rs ' + loan.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     document.getElementById('sum-expense').textContent = 'Rs ' + expense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    
-    
     // 2. Calculate Filtered Balance based on FULL FILTERED LIST
     let fullIncome = 0, fullLoan = 0, fullExpense = 0;
     fullFilteredList.forEach(r=>{
@@ -104,7 +97,6 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
     
     // --- Update the Filtered Net Balance ---
     document.getElementById('summary-filtered-balance').textContent = 'Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    
     // 3. Render the list of records using the FULL FILTERED LIST
     renderRecordsList(fullFilteredList);
 }
@@ -112,7 +104,6 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
 function renderRecordsList(list){
   Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
   const rows = (list && Array.isArray(list)) ? list : [];
-  
   // Find the correct header to display sorting arrow
   const sortKey = currentSort.key;
   const sortOrder = currentSort.order;
@@ -123,14 +114,15 @@ function renderRecordsList(list){
           div.removeAttribute('data-sort-order');
       }
   });
-
   if (rows.length === 0) {
       const emptyDiv = document.createElement('div');
       emptyDiv.className = 'empty-state';
       // Display a relevant message based on filters
-      const isFiltered = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday();
+      const isFiltered = filterSearch.value ||
+      filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday();
       emptyDiv.textContent = isFiltered
-                              ? "No records found matching your current filters."
+                              ?
+      "No records found matching your current filters."
                               : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
       recordsSection.appendChild(emptyDiv);
       return;
@@ -140,9 +132,9 @@ function renderRecordsList(list){
     const row = document.createElement('div'); row.className='record-row'; row.dataset.id=rec.guid;
     
     let amountColor;
-    if(rec.sign === 'positive') amountColor = 'var(--success)';
-    else if(rec.sign === 'loan') amountColor = 'var(--warning)';
-    else amountColor = 'var(--danger)';
+    if(rec.sign === 'expense') amountColor = 'var(--danger)';
+    else if(rec.account === 'Loan') amountColor = 'var(--warning)';
+    else amountColor = 'var(--success)';
 
     const dateDiv = document.createElement('div');
     dateDiv.textContent = rec.date;
@@ -156,6 +148,7 @@ function renderRecordsList(list){
     descDiv.textContent = rec.desc;
     row.appendChild(descDiv);
 
+ 
     const amountDiv = document.createElement('div');
     amountDiv.style.color = amountColor;
     amountDiv.textContent = formatAmount(rec.amount, rec.sign);
@@ -163,7 +156,6 @@ function renderRecordsList(list){
 
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'record-actions';
-
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = '🗑️';
     deleteBtn.onclick = () => openDeleteModal(rec.guid);
@@ -192,7 +184,6 @@ function renderLogs(){
 
 let currentAction = '';
 let currentEditId = null;
-
 function openModal(action){
   currentAction = action;
   currentEditId = null;
@@ -216,21 +207,23 @@ function saveRecord(){
   const date = dateInput.value;
   const desc = descInput.value.trim();
   const amount = Number(amtInput.value);
-
   if(!date || !desc || isNaN(amount) || amount <= 0){
     alert('Please fill all fields with valid data.');
     return;
   }
 
   const record = {
-    guid: currentEditId || generateGuid(),
+    guid: currentEditId ||
+    generateGuid(),
     date,
     account: accountSelect.value,
     desc,
     amount: amount.toFixed(2),
-    sign: currentAction === 'expense' ? 'negative' : (currentAction === 'loan' ? 'loan' : 'positive')
+    
+    // FIX JSA-04: Change 'negative' to 'expense' for consistency with rendering and sync logic.
+    sign: currentAction === 'expense' ?
+    'expense' : (currentAction === 'loan' ? 'loan' : 'positive')
   };
-
   if(currentEditId){
     const index = store.records.findIndex(r => r.guid === currentEditId);
     if(index > -1){
@@ -251,14 +244,12 @@ function saveRecord(){
 function openDeleteModal(id){
   const rec = store.records.find(r => r.guid === id);
   if(!rec) return;
-
   deleteDetailsDiv.innerHTML = `
     <strong>Date:</strong> ${rec.date}<br>
     <strong>Account:</strong> ${rec.account}<br>
     <strong>Description:</strong> ${rec.desc}<br>
     <strong>Amount:</strong> Rs ${Number(rec.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
   `;
-
   deleteConfirmBtn.dataset.id = id;
   deleteOverlay.classList.add('show');
 }
@@ -311,7 +302,8 @@ function toggleTheme(){
 
 function handleSortClick(key){
   if (currentSort.key === key) {
-      currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+      currentSort.order = currentSort.order === 'asc' ?
+      'desc' : 'asc';
   } else {
       currentSort.key = key;
       currentSort.order = 'desc';
@@ -323,11 +315,13 @@ function applyFilters(){
   let filtered = [...store.records];
 
   // Date Filter
-  const fromDate = filterFrom.value ? new Date(filterFrom.value) : null;
-  const toDate = filterTo.value ? new Date(filterTo.value) : null;
+  // FIX JSA-05: Append 'T00:00:00Z' to force UTC midnight for consistent comparison
+  const fromDate = filterFrom.value ? new Date(filterFrom.value + 'T00:00:00Z') : null;
+  const toDate = filterTo.value ? new Date(filterTo.value + 'T23:59:59Z') : null; // To date set to end of day UTC
   if (fromDate || toDate) {
       filtered = filtered.filter(r => {
-          const rDate = new Date(r.date);
+          // Use UTC midnight for record date comparison
+          const rDate = new Date(r.date + 'T00:00:00Z'); 
           return (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate);
       });
   }
@@ -353,18 +347,20 @@ function applyFilters(){
   filtered.sort((a, b) => {
       let valA = a[currentSort.key];
       let valB = b[currentSort.key];
+      
+      // FIX JSA-06: Remove inefficient date/amount conversion in sort logic
       if (currentSort.key === 'amount') {
           valA = Number(valA);
           valB = Number(valB);
-      } else if (currentSort.key === 'date') {
-          valA = new Date(valA);
-          valB = new Date(valB);
-      }
-      if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
-      if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
-      return 0;
-  });
+      } 
+      // Date comparison relies on YYYY-MM-DD string sort (which is lexicographically correct)
+      
+      let comparison = 0;
+      if (valA > valB) comparison = 1;
+      else if (valA < valB) comparison = -1;
 
+      return currentSort.order === 'asc' ? comparison : comparison * -1;
+  });
   recalcSummaryAndRender(dateFilteredList, filtered);
 }
 
@@ -414,7 +410,7 @@ function download(data, filename, type) {
     setTimeout(function() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);  
-    }, 0); 
+    }, 0);
 }
 
 function backupData() {
@@ -452,17 +448,20 @@ function restoreData(event) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        try {
+        try 
+        {
             const data = JSON.parse(e.target.result);
             if (data.records && Array.isArray(data.records)) {
                 store.records = data.records;
                 store.logs = data.logs || [];
                 pendingSyncQueue = data.pendingSync || []; 
-                
+          
+          
                 // Ensure restored records are in string format for consistency
                 store.records = store.records.map(r => {
                     if (r.date instanceof Date) {
-                        r.date = isoFormat(r.date);
+                        r.date 
+                        = isoFormat(r.date);
                     }
                     return r;
                 });
@@ -489,7 +488,6 @@ function setupEventListeners() {
   document.querySelectorAll('.big-btn').forEach(btn => {
       btn.addEventListener('click', (e) => openModal(e.target.dataset.action));
   });
-  
   saveBtn.addEventListener('click', saveRecord);
   cancelBtn.addEventListener('click', closeModal);
   deleteCancelBtn.addEventListener('click', closeModal);
@@ -497,7 +495,6 @@ function setupEventListeners() {
   btnReset.addEventListener('click', () => resetOverlay.classList.add('show'));
   resetCancelBtn.addEventListener('click', closeModal);
   resetConfirmBtn.addEventListener('click', deleteAllData);
-
   btnLog.addEventListener('click', () => { 
       renderLogs();
       logOverlay.classList.add('show');
@@ -522,7 +519,6 @@ function setupEventListeners() {
   quickFilterButtons.yesterday.addEventListener('click', () => applyQuickFilter('yesterday'));
   quickFilterButtons.month.addEventListener('click', () => applyQuickFilter('month'));
   quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
-
   recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
       div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
   });
@@ -536,12 +532,10 @@ function init(){
     
     const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
     applyTheme(savedTheme);
-
     // Default Filter 'Today' set kiya gaya hai:
     filterFrom.value = isoToday();
     filterTo.value = isoToday();
     quickFilterButtons.today.classList.add('active');
-    
     // Set initial sort indicator in the header
     const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
     if (initialHeader) {
@@ -558,7 +552,6 @@ function init(){
     addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
 
     setupEventListeners();
-
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/hledgerapp/service-worker.js');
     }
