@@ -1307,8 +1307,8 @@
                     if (r.date instanceof Date) {
                          r.date = isoFormat(r.date); 
                     } 
-                    // Align Status Consistency (4): Backend Code.gs uses 'ACTIVE' / 'EDIT'
-                    return (r.status.toUpperCase() === 'ACTIVE' || r.status.toUpperCase() === 'EDIT') ? r : null; 
+                    // FIX: Use reliably normalized status (r.status_normalized) instead of raw r.status.toUpperCase()
+                    return (r.status_normalized === 'ACTIVE' || r.status_normalized === 'EDIT') ? r : null; 
                 }).filter(r => r !== null); // Remove null entries (deleted/edited)
                 
                 pendingSyncQueue = []; // Clear queue on full restore
