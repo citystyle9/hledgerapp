@@ -4,11 +4,9 @@
 const STORAGE_KEY = 'homeledger_v1_data_v1';
 const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1'; 
 // NOTE: GOOGLE_SHEETS_WEBHOOK is placed here as it is only used for data service operations
-const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec'; 
-
+const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec';
 let store = { records: [], logs: [] };
-let pendingSyncQueue = []; 
-
+let pendingSyncQueue = [];
 // -------------------------------------------------------------------
 // 2. Persistence & Logging
 // -------------------------------------------------------------------
@@ -27,7 +25,7 @@ function saveToStorage(){
       }
       
       // NOTE: currentSort is part of the application state, but save logic is here
-      localStorage.setItem(SORT_KEY, JSON.stringify(currentSort)); 
+      localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
   }catch(e){}
 }
 function loadFromStorage(){
@@ -45,7 +43,8 @@ function loadFromStorage(){
     }
     
     const rawSort = localStorage.getItem(SORT_KEY);
-    if(rawSort) currentSort = JSON.parse(rawSort) || { key: 'date', order: 'desc' };
+    if(rawSort) currentSort = JSON.parse(rawSort) ||
+    { key: 'date', order: 'desc' };
 
   }catch(e){
     store.records = [];
@@ -60,7 +59,7 @@ function addLog(entry){
   if(store.logs.length>500) store.logs.length = 500;
   // NOTE: Calling renderLogs and saveToStorage is application logic
   renderLogs();
-  saveToStorage(); 
+  saveToStorage();
 }
 
 // -------------------------------------------------------------------
@@ -69,16 +68,16 @@ function addLog(entry){
 
 function addToPendingQueue(record, recordStatus) {
     const existingIndex = pendingSyncQueue.findIndex(item => item.id === record.guid);
-    
     const sheetData = {
         id: record.guid,
         date: record.date,
         description: record.desc,
-        amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
-        account: record.account || 'N/A',
+        amount: record.sign === 'expense' ?
+        -Number(record.amount) : Number(record.amount), 
+        account: record.account ||
+        'N/A',
         status: recordStatus
     };
-
     if (existingIndex > -1) {
         pendingSyncQueue[existingIndex] = sheetData;
     } else {
@@ -91,23 +90,24 @@ function addToPendingQueue(record, recordStatus) {
 // Updated: Default status is 'Created'
 async function sendRecordToSheets(record, recordStatus = 'Created') { 
     if (!record || record.amount === 0) return;
-    
     const sheetData = {
         id: record.guid,
         date: record.date,
         description: record.desc,
-        amount: record.sign === 'expense' ? -Number(record.amount) : Number(record.amount), 
-        account: record.account || 'N/A',
+        amount: record.sign === 'expense' ?
+        -Number(record.amount) : Number(record.amount), 
+        account: record.account ||
+        'N/A',
         status: recordStatus
     };
-    
     async function attemptFetch(data) {
         try {
             await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
                 mode: 'no-cors', 
                 headers: {
-                    'Content-Type': 'application/json', 
+                    // FIX JSD-01: Change Content-Type to text/plain for no-cors compatibility
+                    'Content-Type': 'text/plain', 
                 },
                 body: JSON.stringify(data)
             });
@@ -119,7 +119,6 @@ async function sendRecordToSheets(record, recordStatus = 'Created') {
     }
 
     const success = await attemptFetch(sheetData);
-
     if (success) {
         console.log('Sheets Sync: Request sent successfully.');
         const index = pendingSyncQueue.findIndex(item => item.id === record.guid);
@@ -141,7 +140,6 @@ async function attemptPendingSync() {
     }
     
     addLog(`[${nowTsForLog()}] 🔄 Starting automatic sync for ${pendingSyncQueue.length} pending records...`);
-    
     // We create a copy to iterate, in case the original array changes during sync
     const recordsToSync = [...pendingSyncQueue];
     let syncCount = 0;
@@ -152,10 +150,10 @@ async function attemptPendingSync() {
             const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
                 mode: 'no-cors', 
-                headers: { 'Content-Type': 'application/json' },
+                // FIX JSD-01: Change Content-Type to text/plain for no-cors compatibility
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(data)
             });
-            
             // If fetch succeeds (response is received in no-cors mode), remove it from the actual queue
             const index = pendingSyncQueue.findIndex(item => item.id === data.id);
             if (index > -1) {
@@ -167,11 +165,12 @@ async function attemptPendingSync() {
             // If fetch fails (network error), stop the sync process (probably still offline)
             console.error('Auto Sync Interrupted (Network Error):', error);
             addLog(`[${nowTsForLog()}] ⚠️ Auto Sync Interrupted. Network connection lost or server error.`);
-            break; 
+            break;
         }
     }
     
-    saveToStorage(); // Save the updated queue
+    saveToStorage();
+    // Save the updated queue
     
     if (syncCount > 0) {
         addLog(`[${nowTsForLog()}] ✅ Automatic sync completed: ${syncCount} records successfully synced.`);
@@ -191,9 +190,9 @@ function restoreDataFromSheets(isAutoLoad) {
     const baseUrl = GOOGLE_SHEETS_WEBHOOK + '?action=getall';
     const callbackName = 'homeledger_restore_cb_' + Date.now();
     const url = baseUrl + '&callback=' + callbackName;
-
     // Create a timeout in case script fails to load
-    const timeoutMs = 15000; // 15 seconds
+    const timeoutMs = 15000;
+    // 15 seconds
     let timedOut = false;
     const to = setTimeout(() => {
       timedOut = true;
@@ -202,7 +201,6 @@ function restoreDataFromSheets(isAutoLoad) {
       alert('Failed to restore: request timed out.');
       cleanup();
     }, timeoutMs);
-
     // Cleanup function
     function cleanup() {
       clearTimeout(to);
@@ -210,7 +208,8 @@ function restoreDataFromSheets(isAutoLoad) {
       const s = document.getElementById(callbackName + '_script');
       if (s && s.parentNode) s.parentNode.removeChild(s);
       // remove global callback
-      try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined; }
+      try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined;
+      }
     }
 
     // Define the global callback (yehi function data receive karega)
@@ -224,18 +223,26 @@ function restoreDataFromSheets(isAutoLoad) {
           // IMPORTANT FIX: Convert Date Object back to YYYY-MM-DD string for display/filtering
           store.records = response.records.map(r => {
               if (!r || typeof r.date !== 'string' || typeof r.account !== 'string' || typeof r.desc !== 'string' || isNaN(Number(r.amount))) {
-                return null;
+              
+              return null;
               }
               // Agar date ek Date Object ban chuki hai, toh usko wapas YYYY-MM-DD string mein convert karen
               if (r.date instanceof Date) {
                    r.date = isoFormat(r.date); 
+        
               } 
               // Updated: Check for 'CREATED' or 'MODIFIED' status
               const statusNorm = (r.status_normalized || String(r.status || '').toUpperCase()).toUpperCase();
-              return (statusNorm === 'CREATED' || statusNorm === 'MODIFIED') ? r : null; 
-          }).filter(r => r !== null); // Remove null entries (deleted/edited)
+              // Note: Backend uses 'ACTIVE'/'EDIT', Frontend here checks 'CREATED'/'MODIFIED'. 
+              // The audit was performed on the updated Grok code which uses the newer status names.
+              // For safety and compatibility with the provided Code.gs, we should use 'ACTIVE'/'EDIT'
+              // return (statusNorm === 'CREATED' || statusNorm === 'MODIFIED') ? r : null; 
+              return (statusNorm === 'ACTIVE' || statusNorm === 'EDIT') ? r : null; 
+          }).filter(r => r !== null);
+          // Remove null entries (deleted/edited)
           
-          pendingSyncQueue = []; // Clear queue on full restore
+          pendingSyncQueue = [];
+          // Clear queue on full restore
           store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${store.records.length} records loaded.`);
           calculateGlobalTotals(); // Recalculate everything after restore
           if (!isAutoLoad) { // Only show alert on manual restore
