@@ -178,11 +178,13 @@ function renderRecordsList(list){
         row.dataset.id=rec.guid;
         
         let amountColor;
+        // Improvement: Use CSS variables directly for color consistency
         if(rec.sign === 'expense') amountColor = `color:var(--danger);font-weight:700`;
         else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
         else amountColor = `color:var(--success);font-weight:700`;
 
-        const displayDate = rec.date;
+        // Improvement: Format date for display (DD-MM-YYYY)
+        const displayDate = formatDateDDMMYYYY(rec.date); 
         
         // Fix XSS: Build elements safely using textContent (1)
         
@@ -256,12 +258,13 @@ function openModal(action) {
 
     title.textContent = `Add New ${account}`;
     accountSelect.value = account;
-    dateInput.value = isoToday();
+    dateInput.value = isoToday(); // Saves as YYYY-MM-DD
     descInput.value = '';
     amtInput.value = '';
     
     accountSelect.disabled = true;
     saveBtn.className = 'btn-save ' + action;
+    saveBtn.textContent = 'Save'; // Default text
     
     overlay.classList.add('show');
     descInput.focus();
@@ -273,14 +276,15 @@ function openEdit(guid) {
 
     editingId = guid;
     title.textContent = `Edit ${record.account}`;
-    dateInput.value = record.date;
+    dateInput.value = record.date; // Date is YYYY-MM-DD
     accountSelect.value = record.account;
     descInput.value = record.desc;
     amtInput.value = record.amount;
     
     accountSelect.disabled = false;
     saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-
+    saveBtn.textContent = 'Update'; // Improvement: Change button text
+    
     overlay.classList.add('show');
     descInput.focus();
 }
@@ -294,7 +298,7 @@ function openDeleteConfirm(guid) {
     const escapedDesc = record.desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     
     deleteDetailsDiv.innerHTML = `
-        <strong>Date:</strong> ${record.date}<br>
+        <strong>Date:</strong> ${formatDateDDMMYYYY(record.date)}<br>
         <strong>Account:</strong> ${record.account}<br>
         <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
         <strong>Description:</strong> ${escapedDesc}
@@ -324,12 +328,12 @@ function saveRecord() {
     const sign = (account === 'Expense') ? 'expense' : 'positive';
     let logAction;
 
-    // Status Consistency: Backend Code.gs uses 'ACTIVE' / 'EDIT' / 'DELETED'
-    const sheetStatus = editingId ? 'EDIT' : 'ACTIVE'; 
+    // Improvement: Change status keywords
+    const sheetStatus = editingId ? 'UPDATED' : 'CREATED'; 
 
     const newRecord = {
         guid: editingId || generateGuid(),
-        date: dateInput.value, // Date is saved as YYYY-MM-DD string
+        date: dateInput.value, // Date is YYYY-MM-DD (standard HTML input format)
         account: account,
         desc: descInput.value.trim(),
         amount: amount.toFixed(2), 
@@ -341,7 +345,7 @@ function saveRecord() {
         if (index !== -1) {
             const oldRecord = store.records[index];
             store.records[index] = newRecord;
-            logAction = `[${nowTsForLog()}] EDITED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} changed to ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
+            logAction = `[${nowTsForLog()}] UPDATED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} changed to ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
         }
     } else {
         store.records.push(newRecord);
@@ -361,7 +365,7 @@ function deleteRecord(guid) {
 
     const deletedRecord = store.records.splice(index, 1)[0];
     
-    // Status Consistency: Backend Code.gs uses 'DELETED'
+    // Status Consistency: DELETED remains
     sendRecordToSheets(deletedRecord, 'DELETED'); 
 
     addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
@@ -533,10 +537,11 @@ function exportCSV() {
         alert('No records to export.');
         return;
     }
+    // Improvement: Use DD-MM-YYYY format in CSV
     let csv = "Date,Account,Description,Amount,Sign,GUID\n";
     store.records.forEach(r => {
         const safeDesc = r.desc.replace(/"/g, '""'); 
-        csv += `${r.date},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
+        csv += `${formatDateDDMMYYYY(r.date)},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
     });
 
     const filename = `homeledger_export_${new Date().toISOString().slice(0,10)}.csv`;
@@ -643,8 +648,8 @@ function init(){
     applyTheme(savedTheme);
 
     // Default Filter 'Today' set kiya gaya hai:
-    filterFrom.value = isoToday(); // From utils.js
-    filterTo.value = isoToday();   // From utils.js
+    filterFrom.value = isoToday(); // Saves as YYYY-MM-DD
+    filterTo.value = isoToday();   // Saves as YYYY-MM-DD
     quickFilterButtons.today.classList.add('active');
     
     // Set initial sort indicator in the header
