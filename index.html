@@ -356,7 +356,7 @@
 <body>
   <div class="wrap" id="app">
     <div class="topbar">
-      <div class="brand">HomeLedger">HomeLedger</div>
+      <div class="brand">HomeLedger</div>
       <div class="controls">
         <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
         <details class="menu">
@@ -1307,7 +1307,7 @@
                     if (r.date instanceof Date) {
                          r.date = isoFormat(r.date); 
                     } 
-                    // FIX: Use reliably normalized status (r.status_normalized) instead of raw r.status.toUpperCase()
+                    // FIX: Use reliably normalized status (r.status_normalized) for filtering
                     return (r.status_normalized === 'ACTIVE' || r.status_normalized === 'EDIT') ? r : null; 
                 }).filter(r => r !== null); // Remove null entries (deleted/edited)
                 
@@ -1459,7 +1459,7 @@
           const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
           applyTheme(savedTheme);
 
-          // Default Filter 'Today' set kiya gaya hai:
+          // Default Filter 'Today' set kiya गया है:
           filterFrom.value = isoToday();
           filterTo.value = isoToday();
           quickFilterButtons.today.classList.add('active');
