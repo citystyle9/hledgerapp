@@ -1,4 +1,4 @@
-// Optimization Summary: Converted to ES6 syntax. Integrated AES-GCM load/save. Centralized color logic. Updated saveRecord/deleteRecord/openDeleteConfirm to handle negative Expense amounts for storage/sync, while displaying positive absolute values.
+// Optimization Summary: Converted init function to async and used await for loadFromStorage to resolve an issue where event listeners were not being attached due to an unresolved promise.
 // -------------------------------------------------------------------
 // 1. DOM References and Constants (Keep Global in Scope)
 // -------------------------------------------------------------------
