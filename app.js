@@ -1,3 +1,4 @@
+// Optimization Summary: Converted to modern ES6 syntax (const/let, arrow functions), implemented better XSS protection in rendering, improved logging/date consistency, fixed critical date filtering logic for DD-MM-YYYY, and ensured DOMContentLoaded is used correctly.
 // -------------------------------------------------------------------
 // 1. DOM References and Constants (Keep Global in Scope)
 // -------------------------------------------------------------------
@@ -45,63 +46,66 @@ const THEME_KEY = 'homeledger_theme_v1';
 const SORT_KEY = 'homeledger_sort_v1';
 const VERSION_TAG = 'HomeLedger v1.5.3'; 
 let currentSort = { key: 'date', order: 'desc' }; // Initialized globally, loaded from storage
+let editingId = null; // Moved to top level scope
 
-// Helper function placeholder (needs to be available globally in the script scope)
-function debounce(fn, delay) {
+// Helper function definition moved here from utility section (for scope clarity)
+const debounce = (fn, delay) => {
     let timer;
-    return function (...args) {
+    return (...args) => {
         clearTimeout(timer);
         timer = setTimeout(() => fn(...args), delay);
     };
-}
+};
 
 
 // -------------------------------------------------------------------
 // 2. Toast and Networking Logic
 // -------------------------------------------------------------------
 
-function showToast(message, type = 'info', duration = 3000) {
+const showToast = (message, type = 'info', duration = 3000) => {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    // Security Improvement: Use textContent to prevent XSS in toast message
     toast.textContent = message;
     toastContainer.appendChild(toast);
     
-    setTimeout(() => toast.classList.add('show'), 10);
+    // Use requestAnimationFrame for smoother DOM transition/repaint
+    requestAnimationFrame(() => toast.classList.add('show'));
 
     setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
+        // Wait for CSS transition before removing
+        setTimeout(() => toast.remove(), 300); 
     }, duration);
-}
+};
 
-function setupNetworkListeners() {
+const setupNetworkListeners = () => {
     // Auto-sync on connection restore
     window.addEventListener('online', () => {
-        console.log("coded: app.js");
-        console.log('Internet connection restored — syncing queued records...');
+        // console.log('Internet connection restored — syncing queued records...');
+        showToast('Connection restored. Syncing...', 'online', 3000);
         attemptPendingSync(); // Calls function from data-service.js
     });
 
     // Notify user when connection is lost
     window.addEventListener('offline', () => {
-        console.log("coded: app.js");
-        console.log('Internet connection lost — operating in offline mode.');
+        // console.log('Internet connection lost — operating in offline mode.');
         showToast('Offline mode — entries will be queued.', 'offline', 6000);
     });
-}
+};
 
 
 // -------------------------------------------------------------------
 // 3. Rendering, Logging, and Summary 
 // -------------------------------------------------------------------
 
-function calculateGlobalTotals(){
+const calculateGlobalTotals = () => {
     let income = 0, loan = 0, expense = 0;
-    store.records.forEach(r=>{
+    store.records.forEach(r => {
         const amount = Number(r.amount || 0);
-        if(r.account === 'Income') income += amount;
-        else if(r.account === 'Loan') loan += amount;
-        else if(r.account === 'Expense') expense += amount;
+        if (r.account === 'Income') income += amount;
+        else if (r.account === 'Loan') loan += amount;
+        else if (r.account === 'Expense') expense += amount;
     });
     
     const globalBalance = (income + loan) - expense;
@@ -113,17 +117,17 @@ function calculateGlobalTotals(){
     applyFilters(); 
     
     saveToStorage();
-}
+};
 
-function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
+const recalcSummaryAndRender = (dateFilteredList, fullFilteredList) => {
     
     // 1. Calculate Income/Loan/Expense Summary Totals based on DATE FILTERED LIST
     let income = 0, loan = 0, expense = 0;
-    dateFilteredList.forEach(r=>{
+    dateFilteredList.forEach(r => {
         const amount = Number(r.amount || 0);
-        if(r.account === 'Income') income += amount;
-        else if(r.account === 'Loan') loan += amount;
-        else if(r.account === 'Expense') expense += amount;
+        if (r.account === 'Income') income += amount;
+        else if (r.account === 'Loan') loan += amount;
+        else if (r.account === 'Expense') expense += amount;
     });
     
     // --- Update Income/Loan/Expense with DATE FILTERED amounts ---
@@ -134,11 +138,11 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
     
     // 2. Calculate Filtered Balance based on FULL FILTERED LIST
     let fullIncome = 0, fullLoan = 0, fullExpense = 0;
-    fullFilteredList.forEach(r=>{
-      const amount = Number(r.amount || 0);
-      if(r.account === 'Income') fullIncome += amount;
-      else if(r.account === 'Loan') fullLoan += amount;
-      else if(r.account === 'Expense') fullExpense += amount;
+    fullFilteredList.forEach(r => {
+        const amount = Number(r.amount || 0);
+        if (r.account === 'Income') fullIncome += amount;
+        else if (r.account === 'Loan') fullLoan += amount;
+        else if (r.account === 'Expense') fullExpense += amount;
     });
     const filteredBalance = (fullIncome + fullLoan) - fullExpense;
     
@@ -147,13 +151,14 @@ function recalcSummaryAndRender(dateFilteredList, fullFilteredList) {
     
     // 3. Render the list of records using the FULL FILTERED LIST
     renderRecordsList(fullFilteredList);
-}
+};
 
-function renderRecordsList(list){
-    Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n=>n.remove());
+const renderRecordsList = (list) => {
+    // Clear all previous rows and empty state
+    Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n => n.remove());
     const rows = (list && Array.isArray(list)) ? list : [];
     
-    // Find the correct header to display sorting arrow
+    // Update the sort indicator in the header
     const sortKey = currentSort.key;
     const sortOrder = currentSort.order;
     recordsHead.querySelectorAll('div').forEach(div => {
@@ -167,7 +172,7 @@ function renderRecordsList(list){
     if (rows.length === 0) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'empty-state';
-        // Display a relevant message based on filters
+        // Check if filters are active
         const isFiltered = filterSearch.value || filterAccount.value !== 'All Accounts' || filterFrom.value !== isoToday() || filterTo.value !== isoToday();
         emptyDiv.textContent = isFiltered
                                 ? "No records found matching your current filters."
@@ -175,22 +180,30 @@ function renderRecordsList(list){
         recordsSection.appendChild(emptyDiv);
         return;
     }
+    
+    const fragment = document.createDocumentFragment();
 
-    rows.forEach(rec=>{
+    rows.forEach(rec => {
         const row = document.createElement('div'); 
-        row.className='record-row'; 
-        row.dataset.id=rec.guid;
+        row.className = 'record-row'; 
+        row.dataset.id = rec.guid;
         
         let amountColor;
-        // Improvement: Use CSS variables directly for color consistency
-        if(rec.sign === 'expense') amountColor = `color:var(--danger);font-weight:700`;
-        else if(rec.account === 'Loan') amountColor = `color:var(--warning);font-weight:700`;
-        else amountColor = `color:var(--success);font-weight:700`;
+        // FIX: Update amount color logic to consistently use the three account types
+        if (rec.account === 'Income') {
+            amountColor = 'var(--success)'; // Green
+        } else if (rec.account === 'Loan') {
+            amountColor = 'var(--warning)'; // Yellow
+        } else if (rec.account === 'Expense') {
+            amountColor = 'var(--danger)'; // Red
+        } else {
+            amountColor = 'var(--text-color)'; // Default fallback
+        }
 
-        // Improvement: Format date for display (DD-MM-YYYY)
+        // Format date for display (DD/MM/YYYY)
         const displayDate = formatDateDDMMYYYY(rec.date); 
         
-        // Fix XSS: Build elements safely using textContent (1)
+        // Use textContent for safe DOM element creation (XSS Prevention)
         
         const dateDiv = document.createElement('div');
         dateDiv.textContent = displayDate;
@@ -205,8 +218,8 @@ function renderRecordsList(list){
         row.appendChild(descDiv);
 
         const amountDiv = document.createElement('div');
-        amountDiv.style.cssText = amountColor;
-        amountDiv.textContent = formatAmount(rec.amount,rec.sign);
+        amountDiv.style.cssText = `color:${amountColor};font-weight:700`;
+        amountDiv.textContent = formatAmount(rec.amount, rec.sign);
         row.appendChild(amountDiv);
 
         const actionsDiv = document.createElement('div');
@@ -215,50 +228,62 @@ function renderRecordsList(list){
         const editBtn = document.createElement('button');
         editBtn.title = 'Edit';
         editBtn.textContent = '✏️';
-        editBtn.addEventListener('click', ()=> openEdit(rec.guid));
+        // Use arrow function for clean closure
+        editBtn.addEventListener('click', () => openEdit(rec.guid)); 
         actionsDiv.appendChild(editBtn);
         
         const deleteBtn = document.createElement('button');
         deleteBtn.title = 'Delete';
         deleteBtn.textContent = '🗑️';
-        deleteBtn.addEventListener('click', ()=> openDeleteConfirm(rec.guid));
+        // Use arrow function for clean closure
+        deleteBtn.addEventListener('click', () => openDeleteConfirm(rec.guid)); 
         actionsDiv.appendChild(deleteBtn);
         
         row.appendChild(actionsDiv);
-        recordsSection.appendChild(row);
+        fragment.appendChild(row); // Append to fragment
     });
-}
+    recordsSection.appendChild(fragment); // Single DOM insert
+};
 
-function renderLogs(){
+const renderLogs = () => {
     const logModalList = document.getElementById('activity-log-modal');
-    logModalList.innerHTML = '';
-    store.logs.forEach(entry=>{
-        const div = document.createElement('div'); 
-        div.className='log-item'; 
-        div.textContent = entry;
-        logModalList.appendChild(div);
-    });
-}
+    // Optimization: Use innerHTML = '' for faster clear if list is large
+    logModalList.innerHTML = ''; 
+    
+    // Optimization: Use DocumentFragment for faster list rendering
+    const fragment = document.createDocumentFragment();
 
-function addLog(entry){
+    store.logs.forEach(entry => {
+        const div = document.createElement('div'); 
+        div.className = 'log-item'; 
+        // Security Improvement: Use textContent for XSS prevention
+        div.textContent = entry; 
+        fragment.appendChild(div);
+    });
+    logModalList.appendChild(fragment);
+};
+
+const addLog = (entry) => {
     store.logs.unshift(entry);
-    if(store.logs.length>500) store.logs.length = 500;
-    renderLogs();
+    // Limit log size to prevent excessive storage use
+    if (store.logs.length > 500) {
+        store.logs.length = 500;
+    }
+    // Only re-render logs if the log modal is currently open
+    if (logOverlay.classList.contains('show')) {
+        renderLogs();
+    }
     saveToStorage();
-}
+};
 
 // -------------------------------------------------------------------
 // 4. Modal and Record Operations 
 // -------------------------------------------------------------------
 
-let editingId = null;
-
-function openModal(action) {
+const openModal = (action) => {
     editingId = null;
-    let account = action.charAt(0).toUpperCase() + action.slice(1);
-    if (account === 'Expense') account = 'Expense';
-    if (account === 'Loan') account = 'Loan';
-    if (account === 'Income') account = 'Income'; 
+    // Capitalize action for display in title
+    const account = capitalize(action); 
 
     title.textContent = `Add New ${account}`;
     accountSelect.value = account;
@@ -267,114 +292,134 @@ function openModal(action) {
     amtInput.value = '';
     
     accountSelect.disabled = true;
-    saveBtn.className = 'btn-save ' + action;
-    saveBtn.textContent = 'Save'; // Default text
+    saveBtn.className = `btn-save ${action}`;
+    saveBtn.textContent = 'Save';
     
     overlay.classList.add('show');
     descInput.focus();
-}
+};
 
-function openEdit(guid) {
+const openEdit = (guid) => {
+    // Use const for record lookup
     const record = store.records.find(r => r.guid === guid);
     if (!record) return;
 
     editingId = guid;
     title.textContent = `Edit ${record.account}`;
-    dateInput.value = record.date; // Date is YYYY-MM-DD
+    // NOTE: record.date is DD-MM-YYYY in store, but input[type=date] requires YYYY-MM-DD (ISO)
+    // CRITICAL FIX: Convert DD-MM-YYYY in store back to ISO (YYYY-MM-DD) for HTML input
+    dateInput.value = ddMMYYYYToISO(record.date); 
     accountSelect.value = record.account;
     descInput.value = record.desc;
     amtInput.value = record.amount;
     
     accountSelect.disabled = false;
-    saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-    saveBtn.textContent = 'Update'; // Improvement: Change button text
+    saveBtn.className = `btn-save ${record.account.toLowerCase()}`;
+    saveBtn.textContent = 'Update'; 
     
     overlay.classList.add('show');
     descInput.focus();
-}
+};
 
-function openDeleteConfirm(guid) {
+const openDeleteConfirm = (guid) => {
     const record = store.records.find(r => r.guid === guid);
     if (!record) return;
     
     deleteConfirmBtn.dataset.id = guid;
-    // Fix XSS: Escape HTML in description when using innerHTML (1)
-    const escapedDesc = record.desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    
+    // Use the same color logic for the delete modal description
+    let amountColor;
+    if (record.account === 'Income') {
+        amountColor = 'var(--success)'; 
+    } else if (record.account === 'Loan') {
+        amountColor = 'var(--warning)'; 
+    } else if (record.account === 'Expense') {
+        amountColor = 'var(--danger)'; 
+    } else {
+        amountColor = 'var(--text-color)'; 
+    }
+    
+    // Security Improvement: Use a safer HTML construction/text escaping when using innerHTML
+    const safeDesc = escapeHtml(record.desc); // Uses new utility function
+    const amountHtml = `<span style="font-weight:700; color: ${amountColor};">${formatAmount(record.amount, record.sign)}</span>`;
     
     deleteDetailsDiv.innerHTML = `
         <strong>Date:</strong> ${formatDateDDMMYYYY(record.date)}<br>
         <strong>Account:</strong> ${record.account}<br>
-        <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
-        <strong>Description:</strong> ${escapedDesc}
+        <strong>Amount:</strong> ${amountHtml}<br>
+        <strong>Description:</strong> ${safeDesc}
     `;
     deleteOverlay.classList.add('show');
-}
+};
 
-function closeModal() {
+const closeModal = () => {
     overlay.classList.remove('show');
     deleteOverlay.classList.remove('show');
     resetOverlay.classList.remove('show');
     editingId = null;
-    document.querySelector('details.menu').open = false; 
-}
+    // Close the details menu for cleanup
+    const menuDetails = document.querySelector('details.menu');
+    if (menuDetails) menuDetails.open = false; 
+};
 
-function saveRecord() {
+const saveRecord = () => {
+    // Input Validation
     if (!dateInput.value || !descInput.value || !amtInput.value) {
-        alert('Please fill in all fields (Date, Description, Amount).');
+        showToast('Please fill in all fields (Date, Description, Amount).', 'danger', 4000);
         return;
     }
     const amount = Number(amtInput.value);
     if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid amount.');
+        showToast('Please enter a valid amount greater than zero.', 'danger', 4000);
         return;
     }
+
     const account = accountSelect.value;
     const sign = (account === 'Expense') ? 'expense' : 'positive';
-    let logAction;
-
-    // Improvement: Change status keywords
     const sheetStatus = editingId ? 'UPDATED' : 'CREATED'; 
 
     const newRecord = {
         guid: editingId || generateGuid(),
-        date: dateInput.value, // Date is YYYY-MM-DD (standard HTML input format)
+        date: dateInput.value, // This is ISO YYYY-MM-DD from the input
         account: account,
         desc: descInput.value.trim(),
         amount: amount.toFixed(2), 
         sign: sign,
     };
+    
+    // CRITICAL FIX: Convert the ISO date (YYYY-MM-DD) to the internal DD-MM-YYYY format 
+    // for storage and filtering consistency (matching the Sheets response format).
+    const dateForStoreAndSheet = isoToDDMMYYYY(newRecord.date);
+    newRecord.date = dateForStoreAndSheet; // Update the record before storage/sync
 
-    // CRITICAL FIX: Convert new record date (YYYY-MM-DD) to display format (DD-MM-YYYY)
-    // to match the format used for filtering after restore.
-    const dateToStore = isoToDDMMYYYY(newRecord.date);
-    newRecord.date = dateToStore;
+    let logAction;
 
     if (editingId) {
         const index = store.records.findIndex(r => r.guid === editingId);
         if (index !== -1) {
             const oldRecord = store.records[index];
             store.records[index] = newRecord;
-            logAction = `[${nowTsForLog()}] UPDATED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} changed to ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
+            logAction = `[${nowTsForLog()}] UPDATED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} -> ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
         }
     } else {
         store.records.push(newRecord);
         logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
     }
     
-    // NOTE: sendRecordToSheets will send the DD-MM-YYYY date to the backend, 
-    // which the backend is configured to parse correctly.
+    // NOTE: sendRecordToSheets receives the DD-MM-YYYY date from newRecord.date
     sendRecordToSheets(newRecord, sheetStatus); 
     
     addLog(logAction);
     calculateGlobalTotals();
     closeModal();
-}
+};
 
-function deleteRecord(guid) {
+const deleteRecord = (guid) => {
     const index = store.records.findIndex(r => r.guid === guid);
     if (index === -1) return;
 
-    const deletedRecord = store.records.splice(index, 1)[0];
+    // Use const for array method result
+    const [deletedRecord] = store.records.splice(index, 1);
     
     // Status Consistency: DELETED remains
     sendRecordToSheets(deletedRecord, 'DELETED'); 
@@ -382,64 +427,74 @@ function deleteRecord(guid) {
     addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
     calculateGlobalTotals();
     closeModal();
-}
+};
 
-function deleteAllData() {
+const deleteAllData = () => {
+    // Use const for array literal
+    const resetLogs = [`[${nowTsForLog()}] App reset. All data deleted.`];
+    
+    // Clear all related keys in local storage
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PENDING_SYNC_KEY); 
+    localStorage.removeItem(SORT_KEY);
+    
     store.records = [];
     pendingSyncQueue = [];
-    store.logs = [`[${nowTsForLog()}] App reset. All data deleted.`];
-    calculateGlobalTotals();
+    store.logs = resetLogs; // Set new log content
+    currentSort = { key: 'date', order: 'desc' };
+    
+    // Recalc/Render after reset
+    calculateGlobalTotals(); 
     closeModal();
+    // Use location.reload() to fully reset the app state/UI
     location.reload(); 
-}
+};
 
 // -------------------------------------------------------------------
 // 5. Theme Toggle 
 // -------------------------------------------------------------------
 
-function applyTheme(theme){
-    document.body.dataset.theme = theme;
+const applyTheme = (theme) => {
+    document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_KEY, theme);
-}
+};
 
-function toggleTheme(){
-    const current = document.body.dataset.theme || 'dark';
+const toggleTheme = () => {
+    // Read theme from <html> tag for source of truth
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
     applyTheme(current === 'dark' ? 'light' : 'dark');
-}
+};
 
 // -------------------------------------------------------------------
 // 6. Filtering and Sorting 
 // -------------------------------------------------------------------
 
-function handleSortClick(key){
+const handleSortClick = (key) => {
     if (currentSort.key === key) {
-        currentSort.order = currentSort.order === 'asc' ?
-        'desc' : 'asc';
+        currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
     } else {
         currentSort.key = key;
-        currentSort.order = 'desc';
+        currentSort.order = 'desc'; // Default to descending for new sort key
     }
+    // Optimization: Save sort state immediately
+    localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
     applyFilters();
-}
+};
 
-function applyFilters(){
+const applyFilters = () => {
     let filtered = [...store.records];
-    console.log("coded: app.js");
 
-    // Date Filter
-    // filterFrom.value and filterTo.value are YYYY-MM-DD
+    // Date Filter: filterFrom.value and filterTo.value are YYYY-MM-DD
     const fromDateStr = filterFrom.value;
     const toDateStr = filterTo.value; 
     
-    // FIX 1: Create filter date objects for the START and END of the day (Local Time)
+    // CRITICAL FIX: Create filter date objects for the START (00:00:00) and END (23:59:59) of the selected day (Local Time)
     const fromDate = fromDateStr ? new Date(fromDateStr + 'T00:00:00') : null;
     const toDate = toDateStr ? new Date(toDateStr + 'T23:59:59') : null; 
     
     if (fromDate || toDate) {
         filtered = filtered.filter(r => {
-            // CRITICAL FIX 2: Parse DD-MM-YYYY string from restored record into a Date object
+            // CRITICAL FIX: Parse DD-MM-YYYY string from restored record into a Date object
             const rDate = parseDDMMYYYYtoJSDate(r.date); 
             
             // Check if parsing failed (date is epoch start 1970-01-01) or date range fails
@@ -462,7 +517,8 @@ function applyFilters(){
     if (searchTerm) {
         filtered = filtered.filter(r => 
             r.desc.toLowerCase().includes(searchTerm) || 
-            r.amount.toString().includes(searchTerm)
+            r.amount.toString().includes(searchTerm) ||
+            r.account.toLowerCase().includes(searchTerm)
         );
     }
 
@@ -476,6 +532,10 @@ function applyFilters(){
         if (key === 'amount') {
             valA = Number(valA);
             valB = Number(valB);
+        } else if (key === 'date') {
+            // CRITICAL FIX: Sort by date requires converting DD-MM-YYYY strings to Date objects
+            valA = parseDDMMYYYYtoJSDate(valA).getTime();
+            valB = parseDDMMYYYYtoJSDate(valB).getTime();
         }
         
         let comparison = 0;
@@ -485,14 +545,14 @@ function applyFilters(){
         return order === 'asc' ? comparison : comparison * -1;
     });
     recalcSummaryAndRender(dateFilteredList, filtered);
-}
+};
 
-function applyQuickFilter(type){
+const applyQuickFilter = (type) => {
+    // Clear active class from all buttons
     Object.values(quickFilterButtons).forEach(btn => btn.classList.remove('active'));
 
     const today = new Date();
-    let from = isoToday();
-    let to = isoToday();
+    let from, to; // Declare `from` and `to` with `let`
 
     if (type === 'today') {
         from = isoFormat(today);
@@ -510,7 +570,7 @@ function applyQuickFilter(type){
         to = isoFormat(today); 
         quickFilterButtons.month.classList.add('active');
     } else if (type === 'fiscal') {
-        const dates = getFiscalYearDates();
+        const dates = getFiscalYearDates(); // Returns { from: YYYY-MM-DD, to: YYYY-MM-DD }
         from = dates.from;
         to = dates.to;
         quickFilterButtons.fiscal.classList.add('active');
@@ -519,14 +579,14 @@ function applyQuickFilter(type){
     filterFrom.value = from;
     filterTo.value = to;
     applyFilters();
-}
+};
 
 // -------------------------------------------------------------------
 // 7. Export/Import (Backup/Restore UI interaction) 
 // -------------------------------------------------------------------
 
 // Download function (requires a helper)
-function download(data, filename, type) {
+const download = (data, filename, type) => {
     const file = new Blob([data], {type: type});
     const a = document.createElement("a");
     const url = URL.createObjectURL(file);
@@ -534,13 +594,14 @@ function download(data, filename, type) {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    setTimeout(function() {
+    // Cleanup URL object and temporary element after click
+    setTimeout(() => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);  
     }, 0);
-}
+};
 
-function backupData() {
+const backupData = () => {
     const dataToSave = {
         version: VERSION_TAG,
         timestamp: nowTsForLog(),
@@ -548,65 +609,90 @@ function backupData() {
         logs: store.logs,
         pendingSync: pendingSyncQueue 
     };
-    const filename = `homeledger_backup_${new Date().toISOString().slice(0,10)}.json`;
+    const filename = `homeledger_backup_${isoToday().replace(/-/g, '')}.json`; // Use clean ISO date for filename
     download(JSON.stringify(dataToSave, null, 2), filename, 'application/json');
     addLog(`[${nowTsForLog()}] Data backed up successfully.`);
-}
+    showToast('Backup file downloaded.', 'info', 3000);
+};
 
-function exportCSV() {
+const exportCSV = () => {
     if (store.records.length === 0) {
-        alert('No records to export.');
+        showToast('No records to export.', 'danger', 3000);
         return;
     }
-    // Improvement: Use DD-MM-YYYY format in CSV
+    // Header for CSV
     let csv = "Date,Account,Description,Amount,Sign,GUID\n";
     store.records.forEach(r => {
-        const safeDesc = r.desc.replace(/"/g, '""'); 
-        csv += `${formatDateDDMMYYYY(r.date)},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
+        // Double-quote escape for CSV
+        const safeDesc = `"${r.desc.replace(/"/g, '""')}"`; 
+        // Use DD/MM/YYYY format in CSV
+        csv += `${formatDateDDMMYYYY(r.date)},${r.account},${safeDesc},${r.amount},${r.sign},${r.guid}\n`;
     });
 
-    const filename = `homeledger_export_${new Date().toISOString().slice(0,10)}.csv`;
+    const filename = `homeledger_export_${isoToday().replace(/-/g, '')}.csv`;
     download(csv, filename, 'text/csv');
     addLog(`[${nowTsForLog()}] Data exported to CSV successfully.`);
-}
+    showToast('CSV file exported.', 'info', 3000);
+};
 
-function restoreData(event) {
+const restoreData = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
-        try 
-        {
+    reader.onload = (e) => {
+        try {
             const data = JSON.parse(e.target.result);
             if (data.records && Array.isArray(data.records)) {
-                store.records = data.records;
-                store.logs = data.logs || [];
-                pendingSyncQueue = data.pendingSync || []; 
-          
-          
-                // Ensure restored records are in string format for consistency
-                store.records = store.records.map(r => {
-                    if (r.date instanceof Date) {
-                        r.date 
-                        = isoFormat(r.date);
+                
+                // IMPORTANT: Ensure all restored records have the correct DD-MM-YYYY date format
+                store.records = data.records.map(r => {
+                    // Safety check for basic structure
+                    if (!r || typeof r.date !== 'string' || typeof r.amount === undefined) {
+                        return null;
                     }
+                    
+                    // CRITICAL FIX: Ensure restored record date is stored as DD-MM-YYYY string
+                    // This handles backups from versions where date might be stored differently
+                    let dateString = r.date;
+                    // Handle DD/MM/YYYY format (from old export CSVs) and convert to internal DD-MM-YYYY
+                    if (dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) { 
+                        dateString = dateString.replace(/\//g, '-');
+                    }
+                    
+                    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) { // ISO YYYY-MM-DD
+                        r.date = isoToDDMMYYYY(dateString);
+                    } else if (!dateString.match(/^\d{2}-\d{2}-\d{4}$/)) { // Not DD-MM-YYYY, fallback to epoch
+                        r.date = isoToDDMMYYYY(isoFormat(new Date(0)));
+                    } else {
+                        r.date = dateString; // Assume it's already DD-MM-YYYY
+                    }
+                    
+                    // Ensure amount is a string with 2 decimal places
+                    r.amount = Number(r.amount).toFixed(2);
+                    
                     return r;
-                });
-
+                }).filter(r => r !== null); // Filter out invalid records
+                
+                store.logs = Array.isArray(data.logs) ? data.logs : [];
+                pendingSyncQueue = Array.isArray(data.pendingSync) ? data.pendingSync : []; 
+          
                 store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
                 calculateGlobalTotals();
-                alert(`Successfully restored ${data.records.length} records from local file.`);
+                showToast(`Successfully restored ${store.records.length} records.`, 'online', 5000);
+                addLog(`[${nowTsForLog()}] Local Restore: ${store.records.length} records loaded.`);
             } else {
-                alert('Error: Invalid backup file format. "records" array not found.');
+                showToast('Error: Invalid backup file format. "records" array not found.', 'danger', 5000);
             }
         } catch (err) {
-            alert('Error reading or parsing the file: ' + err.message);
+            showToast('Error reading or parsing the file: ' + err.message, 'danger', 5000);
         }
+        // Clear file input to allow re-uploading the same file
         event.target.value = null; 
     };
+    // Ensure the reader reads as text
     reader.readAsText(file);
-}
+};
 
 // JSONP restoreDataFromSheets() function relies on data-service.js
 
@@ -615,8 +701,8 @@ function restoreData(event) {
 // 8. Event Listeners (UI/App Setup)
 // -------------------------------------------------------------------
 
-function setupEventListeners() {
-    setupNetworkListeners(); // NEW: Network listeners for auto-sync
+const setupEventListeners = () => {
+    setupNetworkListeners();
 
     document.querySelectorAll('.big-btn').forEach(btn => {
         btn.addEventListener('click', (e) => openModal(e.target.dataset.action));
@@ -624,7 +710,8 @@ function setupEventListeners() {
     saveBtn.addEventListener('click', saveRecord);
     cancelBtn.addEventListener('click', closeModal);
     deleteCancelBtn.addEventListener('click', closeModal);
-    deleteConfirmBtn.addEventListener('click', (e) => deleteRecord(e.target.dataset.id));
+    // Use target property to get the element that was actually clicked
+    deleteConfirmBtn.addEventListener('click', (e) => deleteRecord(e.target.dataset.id)); 
     btnReset.addEventListener('click', () => resetOverlay.classList.add('show'));
     resetCancelBtn.addEventListener('click', closeModal);
     resetConfirmBtn.addEventListener('click', deleteAllData);
@@ -643,34 +730,46 @@ function setupEventListeners() {
     btnRestoreSheet.addEventListener('click', () => restoreDataFromSheets(false)); 
     restoreFileInput.addEventListener('change', restoreData);
 
-    // Filtering Events 
+    // Filtering Events (using debounce for search input)
     filterSearch.addEventListener('input', debounce(applyFilters, 300));
     filterAccount.addEventListener('change', applyFilters);
     filterFrom.addEventListener('change', applyFilters);
     filterTo.addEventListener('change', applyFilters);
     
+    // Quick Filter Events
     quickFilterButtons.today.addEventListener('click', () => applyQuickFilter('today'));
     quickFilterButtons.yesterday.addEventListener('click', () => applyQuickFilter('yesterday'));
     quickFilterButtons.month.addEventListener('click', () => applyQuickFilter('month'));
     quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
 
+    // Sorting Events
     recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
         div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
     });
-}
+    
+    // Add event listener to close modals when pressing ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") {
+            if (overlay.classList.contains('show') || deleteOverlay.classList.contains('show') || resetOverlay.classList.contains('show') || logOverlay.classList.contains('show')) {
+                closeModal();
+            }
+        }
+    });
+};
 
 // -------------------------------------------------------------------
 // 9. Initialization (Final Call)
 // -------------------------------------------------------------------
-function init(){
+const init = () => {
     loadFromStorage(); // From data-service.js
     
     const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
     applyTheme(savedTheme);
 
     // Default Filter 'Today' set kiya gaya hai:
-    filterFrom.value = isoToday(); // Saves as YYYY-MM-DD
-    filterTo.value = isoToday();   // Saves as YYYY-MM-DD
+    const todayISO = isoToday();
+    filterFrom.value = todayISO; 
+    filterTo.value = todayISO;   
     quickFilterButtons.today.classList.add('active');
     
     // Set initial sort indicator in the header
@@ -679,6 +778,7 @@ function init(){
         initialHeader.setAttribute('data-sort-order', currentSort.order);
     }
     
+    // Calculate and render with initial data and filters
     calculateGlobalTotals(); 
     
     // Auto Sync Check
@@ -697,8 +797,14 @@ function init(){
     
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/hledgerapp/service-worker.js');
+        // Register the service worker at the correct scope path
+        navigator.serviceWorker.register('/hledgerapp/service-worker.js').then(reg => {
+            console.log('Service Worker registered successfully:', reg);
+        }).catch(error => {
+            console.log('Service Worker registration failed:', error);
+        });
     }
-}
+};
 
+// Ensure initialization runs only after all DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
