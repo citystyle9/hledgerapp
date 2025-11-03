@@ -1,4 +1,4 @@
-// Optimization Summary: Centralized color helper (Task 3). Updated all formatting to use DD/MM/YYYY (Task 2). Added AES-GCM encryption/decryption utilities for localStorage data persistence (Task 1).
+// Optimization Summary: Centralized color helper (Task 3). Updated all formatting to use DD/MM/YYYY (Task 2). Added AES-GCM encryption/decryption utilities for localStorage data persistence (Task 1). Used const/let consistently. Added internal utility function checks for typeof consistency.
 // -------------------------------------------------------------------
 // 1. Helper Functions 
 // -------------------------------------------------------------------
@@ -12,7 +12,11 @@ const nowTsForLog = () => {
 
 // NOTE: This function only formats the numeric part for display (absolute value is handled in app.js)
 const formatAmount = (n, sign) => {
-  return 'Rs ' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    // Ensure n is a number before formatting
+    const numericN = Number(n); 
+    if (isNaN(numericN)) return 'Rs 0.00';
+    
+    return 'Rs ' + numericN.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 };
 
 // FIX: Centralized helper for amount color logic (Task 3)
@@ -26,7 +30,7 @@ const getAccountColor = (account) => {
 // Returns YYYY-MM-DD string (ISO format, standard for HTML date inputs)
 const isoFormat = (d) => {
     // Ensure input is a valid Date object
-    if (!(d instanceof Date) || isNaN(d)) d = new Date();
+    if (!(d instanceof Date) || isNaN(d.getTime())) d = new Date(); // FIX: Check getTime()
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
@@ -53,16 +57,20 @@ const ddMMYYYYToISO = (ddmmyyyy) => {
 // FIX: Returns DD/MM/YYYY string (for display/export) (Task 2)
 const formatDateDDMMYYYY = (dateString) => {
     if (!dateString || typeof dateString !== 'string') return '';
+    
+    // Check for DD/MM/YYYY or DD-MM-YYYY
+    if (dateString.match(/^\d{2}[-/]\d{2}[-/]\d{4}$/)) {
+        const parts = dateString.split(/[-/]/); // Split by - or /
+        // Ensure DD/MM/YYYY consistency for display
+        return `${parts[0]}/${parts[1]}/${parts[2]}`;
+    }
+
     // If input is YYYY-MM-DD (from HTML input value), convert it to DD/MM/YYYY
     if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const parts = dateString.split('-'); // YYYY-MM-DD
         return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
     }
-    // If input is already DD-MM-YYYY, convert separator to DD/MM/YYYY
-    if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
-        const parts = dateString.split('-'); // DD-MM-YYYY
-        return `${parts[0]}/${parts[1]}/${parts[2]}`; // DD/MM/YYYY
-    }
+
     return '';
 };
 
@@ -70,6 +78,8 @@ const formatDateDDMMYYYY = (dateString) => {
 const isoToDDMMYYYY = (isoDateString) => {
     if (!isoDateString || typeof isoDateString !== 'string') return '';
     const parts = isoDateString.split('-'); // [YYYY, MM, DD]
+    if (parts.length !== 3) return ''; // Safety check
+
     // NOTE: Uses '-' for internal data consistency, which the parsing function (in code.gs/utils) expects.
     return `${parts[2]}-${parts[1]}-${parts[0]}`; 
 };
@@ -79,6 +89,8 @@ const parseDDMMYYYYtoJSDate = (ddmmyyyy) => {
     if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return new Date(NaN); 
     try {
         const parts = ddmmyyyy.split('-'); // Parts: [DD, MM, YYYY]
+        if (parts.length !== 3) return new Date(NaN); // Safety check
+
         // Use YYYY, MM-1, DD to create a date object correctly in local timezone
         const year = parseInt(parts[2], 10);
         const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
@@ -97,7 +109,10 @@ const parseDDMMYYYYtoJSDate = (ddmmyyyy) => {
     }
 };
 
-const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const capitalize = (s) => {
+    if (typeof s !== 'string' || s.length === 0) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 const generateGuid = () => {
     // Modern approach using crypto API
@@ -127,6 +142,7 @@ const getFiscalYearDates = () => {
 
 // Security Helper: Basic HTML escaping for dynamic content injection
 const escapeHtml = (unsafe) => {
+    if (typeof unsafe !== 'string') return unsafe;
     return unsafe
          .replace(/&/g, "&amp;")
          .replace(/</g, "&lt;")
@@ -163,15 +179,23 @@ const getEncryptionKey = async () => {
 
     if (keyData) {
         // Import existing key
-        const rawKey = base64ToUint8Array(keyData);
-        cryptoKey = await crypto.subtle.importKey(
-            "raw", 
-            rawKey, 
-            ENCRYPTION_ALGO, 
-            true, // extractable
-            KEY_USAGE
-        );
-    } else {
+        try { // Added try/catch for key import failure
+            const rawKey = base64ToUint8Array(keyData);
+            cryptoKey = await crypto.subtle.importKey(
+                "raw", 
+                rawKey, 
+                ENCRYPTION_ALGO, 
+                true, // extractable
+                KEY_USAGE
+            );
+        } catch (e) {
+            console.error('Error importing existing key. Regenerating.', e);
+            // If import fails, fall through to generate new key
+            keyData = null;
+        }
+    } 
+    
+    if (!keyData) {
         // Generate new key
         cryptoKey = await crypto.subtle.generateKey(
             ENCRYPTION_ALGO, 
@@ -182,12 +206,13 @@ const getEncryptionKey = async () => {
         const exportedKey = await crypto.subtle.exportKey("raw", cryptoKey);
         localStorage.setItem(KEY_STORAGE_KEY, uint8ArrayToBase64(exportedKey));
     }
+    
     return cryptoKey;
 };
 
 // Encrypts data (string) and returns a Base64-encoded string containing IV + Ciphertext
 const encryptData = async (data) => {
-    if (!data) return null;
+    if (!data || typeof data !== 'string') return null; // Safety check
     try {
         const key = await getEncryptionKey();
         const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM uses 12-byte IV
@@ -214,10 +239,15 @@ const encryptData = async (data) => {
 
 // Decrypts Base64-encoded string back to JSON string
 const decryptData = async (encryptedBase64) => {
-    if (!encryptedBase64) return null;
+    if (!encryptedBase64 || typeof encryptedBase64 !== 'string') return null; // Safety check
     try {
         const key = await getEncryptionKey();
         const combined = base64ToUint8Array(encryptedBase64);
+        
+        if (combined.length <= 12) { // IV length is 12
+             console.error('Decryption failed: Combined data length too short.');
+             return null;
+        }
 
         const iv = combined.slice(0, 12); // First 12 bytes is IV
         const ciphertext = combined.slice(12); // Rest is Ciphertext
@@ -231,6 +261,7 @@ const decryptData = async (encryptedBase64) => {
         return new TextDecoder().decode(decrypted);
 
     } catch (e) {
+        // NOTE: This catch also handles 'Key is not a valid CryptoKey' if key is corrupted
         console.error('Decryption failed (Likely tamper or corrupted key):', e);
         return null;
     }
