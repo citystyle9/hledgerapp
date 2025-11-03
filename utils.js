@@ -28,6 +28,12 @@ function formatDateDDMMYYYY(isoDateString) {
         return isoDateString;
     }
 }
+// CRITICAL FIX: Add function to convert ISO (YYYY-MM-DD) to DD-MM-YYYY string format
+function isoToDDMMYYYY(isoDateString) {
+    if (!isoDateString) return '';
+    const parts = isoDateString.split('-'); // [YYYY, MM, DD]
+    return `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY
+}
 // CRITICAL FIX: Parser function to convert DD-MM-YYYY string back to a Date object for comparison
 function parseDDMMYYYYtoJSDate(ddmmyyyy) {
     if (!ddmmyyyy) return new Date(0); // Return epoch start for safety
