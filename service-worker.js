@@ -29,22 +29,22 @@ function fetchAndFallback(event) {
         } else {
             // If resource is not in cache, and it's a navigation request, serve the offline page
             if (event.request.mode === 'navigate') {
-                return caches.match(basePath + 'offline.html');
+                return caches.match(basePath + 'offline.html') || caches.match(basePath + 'index.html');
+            } else {
+                // For other resources (JS, CSS) just fail
+                return new Response(null, { status: 503, statusText: 'Service Unavailable' });
             }
-            // For non-navigation requests (JS/CSS/images), just fail the request if not found
-            // Returning an empty Response prevents the Uncaught TypeError.
-            return new Response(null, { status: 503, statusText: 'Service Unavailable (Offline)' });
         }
     });
 }
 
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Installing...');
+  console.log('[Service Worker] Installing version:', CACHE_NAME);
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('[Service Worker] Pre-caching assets.');
-        // Add all URLs to the cache (this must succeed for SW to install)
+        // Add all URLs to the cache
         return cache.addAll(urlsToCache);
       })
       .then(() => self.skipWaiting()) // To activate the worker immediately
@@ -81,11 +81,7 @@ self.addEventListener('fetch', event => {
   // Handling Navigation Requests (HTML pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-        fetch(event.request) // 1. Try Network
-        .catch(async () => { // 2. Fallback to Cache
-            const indexMatch = await caches.match(basePath + 'index.html');
-            return indexMatch || caches.match(basePath + 'offline.html'); // Serve index or offline page
-        })
+        fetchAndFallback(event) // Network-First strategy
     );
     return;
   }
@@ -105,7 +101,7 @@ self.addEventListener('fetch', event => {
           // 3. Fallback for failed network resource requests (e.g., failed API or JS file)
           // We don't serve offline.html here, just for navigation requests.
           // Returning caches.match(offline.html) here is what caused the TypeError in the resource fetch.
-          return new Response(null, { status: 503, statusText: 'Service Unavailable (Offline)' });
+          return new Response(null, { status: 503, statusText: 'Resource Unavailable Offline' });
       })
   );
 });
