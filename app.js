@@ -458,7 +458,6 @@ function applyFilters(){
             valA = Number(valA);
             valB = Number(valB);
         }
-        // NOTE: Date sorting relies on the string comparison of YYYY-MM-DD which is correct.
         
         let comparison = 0;
         if (valA > valB) comparison = 1;
@@ -675,7 +674,7 @@ function init(){
         showToast('App loaded in Offline mode.', 'offline', 6000);
     }
 
-    setupEventListeners();
+    setupEventListeners(); // CRITICAL FIX: Ensure this is called!
     
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
