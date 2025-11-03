@@ -5,168 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HomeLedger v1.5.3</title>
   
-  <link rel="manifest" href="/hledgerapp/manifest.json" />
-  
-  <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
-  
-  <link rel="stylesheet" href="style.css">
-  
-  <style>
-    /* ------------------------------------------------------------------- */
-    /* 1. CSS Variables and Theme Setup (Copied from baseline) */
-    /* ------------------------------------------------------------------- */
-    :root{
-      /* CORE COLORS */
-      --bg:#0a0d14; 
-      --panel:#1f2937;
-      --glass-border:#4b5563;
-      --muted:#f3f4f6; 
-      
-      /* UTILITY COLORS */
-      --accent:#60a5fa; --success:#34d399; --warning:#fbbf24; --danger:#ef4444;
-      
-      /* SEMANTIC VARIABLES */
-      --text-color: var(--muted);
-      --input-bg: var(--bg); 
-      --input-border: var(--glass-border);
-      --focus-outline-color: var(--accent);
-      --active-filter-bg: var(--accent);
-
-      --font:Inter,ui-sans-serif,system-ui; --gap:12px;
-    }
-
-    body[data-theme="light"]{
-      --bg:#f9fafb; 
-      --panel:#ffffff; 
-      --glass-border:#e5e7eb; 
-      --muted:#111827; 
-      
-      --accent:#2563eb; --success:#059669; --warning:#b45309; --danger:#b91c1c;
-      
-      --text-color: var(--muted);
-      --input-bg: #ffffff; 
-      --input-border: var(--glass-border);
-      --focus-outline-color: var(--accent); 
-      --active-filter-bg: var(--accent);
-      
-      color:var(--text-color);
-    }
-    
-    /* ------------------------------------------------------------------- */
-    /* 2. General Styles and Layout (Copied from baseline) */
-    /* ------------------------------------------------------------------- */
-    body{background:var(--bg);color:var(--text-color);font-family:var(--font);margin:0;padding:0;display:flex;justify-content:center;padding:14px;transition:background .2s,color .2s}
-    .wrap{width:100%;max-width:920px;padding:12px;display:flex;flex-direction:column;gap:var(--gap)}
-
-    .topbar, .balance-card, .filter-card, .records, .modal{
-        background:var(--panel);
-        border:1px solid var(--glass-border);
-        border-radius:6px;
-        box-shadow: none;
-    }
-
-    .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
-    .brand{font-weight:700}
-    .controls{display:flex;gap:8px;align-items:center}
-    details.menu{position:relative}
-    details summary{cursor:pointer;padding:2px 6px}
-    details .dropdown{position:absolute;right:0;top:28px;background:var(--panel);color:inherit;border-radius:6px;padding:6px;border:1px solid var(--glass-border)}
-    details .dropdown button{display:block;width:100%;text-align:left;padding:6px;border:none;background:transparent;color:inherit;cursor:pointer}
-
-    .balance-card{padding:12px;display:flex;justify-content:space-between;gap:12px;align-items:center}
-    .balance-left .big{font-size:18px;font-weight:800;color:var(--accent)}
-    .summary-item{font-size:13px}
-    .actions{display:flex;flex-direction:column;gap:8px; margin-top:10px}
-
-    /* Button Styles */
-    .big-btn{width:100%;padding:10px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:14px}
-    .big-btn.income{background:var(--success);color:#fff}
-    .big-btn.loan{background:var(--warning);color:#111}
-    .big-btn.expense{background:var(--danger);color:#fff}
-
-    .filter-card{padding:10px; margin-top:10px}
-    .filter-row{display:flex;flex-direction:column;gap:6px}
-
-    /* Input/Select Styles */
-    input,select{width:100%;padding:8px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg); color:var(--text-color); box-sizing: border-box; }
-    input:focus, select:focus, button:focus{outline:1px solid var(--focus-outline-color);}
-
-    /* Quick Filter Styles */
-    .quick-filters{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;margin-bottom:2px}
-    .quick-filters button{flex:1 1 auto;padding:6px 8px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text-color);border-radius:4px;font-size:12px;cursor:pointer}
-    .quick-filters button.active {background:var(--active-filter-bg);color:var(--bg);border-color:var(--active-filter-bg);font-weight:700}
-
-    /* Records Styles */
-    .records{overflow:hidden; margin-top:10px}
-    .records-head{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;font-weight:700;background:rgba(255,255,255,0.08);border-bottom:1px solid var(--glass-border)}
-    .records-head > div {cursor: pointer;padding-right: 15px;position: relative;}
-    .records-head > div[data-sort-order="asc"]::after {content: '▲';}
-    .records-head > div[data-sort-order="desc"]::after {content: '▼';}
-    .record-row{display:grid;grid-template-columns:120px 110px 1fr 110px 60px;padding:8px 10px;border-bottom:1px solid var(--glass-border);align-items:center}
-    .record-actions button{background:none;border:none;color:var(--text-color);cursor:pointer}
-
-    footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
-
-    /* Modals */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:none;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}
-    .overlay.show{display:flex}
-    .modal{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--glass-border);border-radius:8px;padding:16px;box-shadow:0 6px 15px rgba(0,0,0,0.4)}
-    .modal h2{margin:0 0 8px 0;font-size:16px}
-    .modal label{font-size:13px;margin-bottom:6px;display:block;color:var(--muted)}
-    .modal .row-2{display:block;} 
-    .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-    .btn-cancel{background:transparent;border:1px solid var(--glass-border);color:var(--muted);padding:8px 12px;border-radius:6px;cursor:pointer}
-    .btn-save{padding:8px 12px;border-radius:6px;border:none;font-weight:700;cursor:pointer}
-    .btn-save.income{background:var(--success);color:#fff}
-    .btn-save.loan{background:var(--warning);color:#111}
-    .btn-save.expense{background:var(--danger);color:#fff}
-    .btn-delete-confirm { background: var(--danger); color: #fff; }
-
-    /* Theme Toggle */
-    .theme-toggle{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width: 40px; 
-      height: 20px;
-      padding: 0;
-      border-radius: 12px;
-      border:1px solid var(--glass-border);
-      cursor:pointer;
-      background:transparent;
-      position: relative;
-      font-size: 14px;
-      overflow: hidden; 
-    }
-    .theme-toggle::before {
-        content: '🌙'; /* Default is Dark Mode, so show Moon (switch to Sun) */
-        color: var(--text-color);
-        position: absolute;
-        transition: transform 0.2s ease-in-out;
-    }
-    body[data-theme="light"] .theme-toggle::before {
-        content: '☀️'; /* Light Mode, so show Sun (switch to Moon) */
-        transform: translateX(0);
-    }
-    
-    .hidden-file{display:none}
-
-    /* Utility */
-    .balance-right {display:flex;gap:12px;align-items:center}
-    .summary-filtered {color:var(--accent)}
-    .success-text {color:var(--success);font-weight:700}
-    .warning-text {color:var(--warning);font-weight:700}
-    .danger-text {color:var(--danger);font-weight:700}
-    .muted-text {font-size:13px;color:var(--muted)}
-    .date-range {display:flex;gap:8px}
-    .modal-spacing {margin-top:8px}
-    .actions-row {margin-top:8px}
-    .danger-text {color:var(--danger)}
-  </style>
-  
   <script>
-    // This script runs synchronously to set the data-theme attribute on <body> before CSS loads
+    // This script runs synchronously to set the data-theme attribute on <html> before CSS loads
     const THEME_KEY = 'homeledger_theme_v1';
     const savedTheme = localStorage.getItem(THEME_KEY);
     if (savedTheme) {
@@ -177,13 +17,21 @@
     }
   </script>
 
+  <link rel="manifest" href="/hledgerapp/manifest.json" />
+  
+  <link rel="icon" type="image/png" sizes="32x32" href="/hledgerapp/icons/icon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/hledgerapp/icons/icon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/hledgerapp/icons/icon-180x180.png">
+  
+  <link rel="stylesheet" href="style.css">
+  
 </head>
-<body data-theme="dark">
+<body>
   <div class="wrap" id="app">
     <div class="topbar">
       <div class="brand">HomeLedger</div>
       <div class="controls">
-        <div class="theme-toggle" id="theme-toggle"></div>
+        <div class="theme-toggle" id="theme-toggle" role="button" title="Toggle theme"></div>
         <details class="menu">
           <summary>⋮</summary>
           <div class="dropdown">
@@ -263,8 +111,8 @@
     <footer>HomeLedger v1.5.3</footer> 
   </div>
 
-  <div class="overlay" id="log-overlay">
-    <div class="modal">
+  <div class="overlay" id="log-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
       <h2>📜 Activity Log</h2>
       <div id="activity-log-modal" class="log-list"></div>
       <div class="actions-row">
@@ -273,8 +121,8 @@
     </div>
   </div>
 
-  <div class="overlay" id="modal-overlay">
-    <div class="modal">
+  <div class="overlay" id="modal-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
       <h2 id="modal-title">Add New Entry</h2>
       <div class="modal-spacing">
         <label for="entry-date">Date</label>
@@ -305,9 +153,9 @@
     </div>
   </div>
   
-  <div class="overlay" id="delete-overlay">
-    <div class="modal">
-      <h2 style="color:var(--danger)">🗑️ Confirm Deletion</h2>
+  <div class="overlay" id="delete-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 class="danger-text">🗑️ Confirm Deletion</h2>
       <div class="delete-modal-content">
         <p>Are you sure you want to permanently delete the following record?</p>
         <div class="record-details" id="delete-record-details"></div>
@@ -319,9 +167,9 @@
       </div>
   </div>
 
-  <div class="overlay" id="reset-overlay">
-    <div class="modal">
-      <h2 style="color:var(--danger)">⚠️ Confirm Full Reset</h2>
+  <div class="overlay" id="reset-overlay" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-modal="true">
+      <h2 class="danger-text">⚠️ Confirm Full Reset</h2>
       <div class="delete-modal-content">
         <p><strong>This action cannot be undone.</strong> All your financial records, activity logs, and settings will be permanently deleted and the app will restart empty.</p>
         <p>We recommend you create a **Backup (JSON)** before proceeding.</p>
