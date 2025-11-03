@@ -31,8 +31,8 @@ function fetchAndFallback(event) {
             if (event.request.mode === 'navigate') {
                 return caches.match(basePath + 'offline.html') || caches.match(basePath + 'index.html');
             } else {
-                // For other resources (JS, CSS) just fail
-                return new Response(null, { status: 503, statusText: 'Service Unavailable' });
+                // For other resources (JS, CSS) return a generic unavailability response
+                return new Response(null, { status: 503, statusText: 'Resource Unavailable Offline' });
             }
         }
     });
@@ -78,15 +78,15 @@ self.addEventListener('fetch', event => {
       return;
   }
   
-  // Handling Navigation Requests (HTML pages)
+  // Handling Navigation Requests (HTML pages) - Network-First with Cache Fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(
-        fetchAndFallback(event) // Network-First strategy
+        fetchAndFallback(event) 
     );
     return;
   }
   
-  // Handling Resource Requests (CSS, JS, Images, JSONP)
+  // Handling Resource Requests (CSS, JS, Images, JSONP) - Cache-First with Network Fallback
   event.respondWith(
     caches.match(event.request) // 1. Try Cache
       .then(response => {
@@ -98,9 +98,7 @@ self.addEventListener('fetch', event => {
       })
       .catch(error => {
           console.error('Fetch failed:', error);
-          // 3. Fallback for failed network resource requests (e.g., failed API or JS file)
-          // We don't serve offline.html here, just for navigation requests.
-          // Returning caches.match(offline.html) here is what caused the TypeError in the resource fetch.
+          // 3. Fallback for failed network resource requests
           return new Response(null, { status: 503, statusText: 'Resource Unavailable Offline' });
       })
   );
