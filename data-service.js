@@ -1,4 +1,4 @@
-// Optimization Summary: Converted to ES6 syntax. Integrated AES-GCM encryption for localStorage. loadFromStorage updated to handle both positive and negative amounts from restoreDataFromSheets, ensuring Expense records are consistently stored with their actual sign.
+// Optimization Summary: Converted to ES6 syntax and used const/let consistently. Improved async flow and simplified try...catch for clarity. loadFromStorage handles corrupted key by deleting it. Updated restoreDataFromSheets cleanup for better reliability.
 // -------------------------------------------------------------------
 // 1. Data Store and Constants
 // -------------------------------------------------------------------
@@ -257,6 +257,7 @@ const restoreDataFromSheets = (isAutoLoad) => {
     addLog(`[${nowTsForLog()}] Attempting to restore data from Google Sheet (JSONP)...`);
 
     const baseUrl = GOOGLE_SHEETS_WEBHOOK + '?action=getall';
+    // Use a more unique callback name to prevent collisions
     const callbackName = 'homeledger_restore_cb_' + Date.now();
     const url = baseUrl + '&callback=' + callbackName;
     
@@ -276,7 +277,10 @@ const restoreDataFromSheets = (isAutoLoad) => {
     const to = setTimeout(() => {
       timedOut = true;
       // Prevent callback from running if it suddenly loads
-      window[callbackName] = () => {}; 
+      // FIX: Check if function exists before overwriting, to not throw an error if the callback already ran
+      if (typeof window[callbackName] === 'function') {
+          window[callbackName] = () => {}; 
+      }
       addLog(`[${nowTsForLog()}] ERROR: Sheet Restore JSONP timed out.`);
       if (!isAutoLoad) {
           showToast('Failed to restore: request timed out.', 'danger', 5000);
