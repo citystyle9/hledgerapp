@@ -1,4 +1,3 @@
-// Optimization Summary: Used const/let consistently. Improved variable scoping within fetchAndFallback for clarity. Updated urlsToCache to include all new assets.
 const CACHE_NAME = 'homeledger-v1.5.3';
 // Updated to match app version
 const basePath = '/hledgerapp/';
