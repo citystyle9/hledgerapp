@@ -1,4 +1,4 @@
-// Optimization Summary: Updated display format in formatDateDDMMYYYY to strictly use DD/MM/YYYY (changing '-' to '/').
+// Optimization Summary: Converted to ES6, consolidated date formatting/parsing, and added AES-GCM encryption/decryption utilities for localStorage data persistence. Added centralized color helper.
 // -------------------------------------------------------------------
 // 1. Helper Functions 
 // -------------------------------------------------------------------
@@ -6,11 +6,20 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const nowTsForLog = () => {
   const d = new Date();
+  // FIX: Ensure log timestamp uses / separator consistently
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
 const formatAmount = (n, sign) => {
   return 'Rs ' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+};
+
+// FIX: Centralized helper for amount color logic
+const getAccountColor = (account) => {
+    if (account === 'Income') return 'var(--success)'; // Green
+    if (account === 'Loan') return 'var(--warning)';   // Yellow
+    if (account === 'Expense') return 'var(--danger)'; // Red
+    return 'var(--text-color)'; // Default
 };
 
 // Returns YYYY-MM-DD string (ISO format, standard for HTML date inputs)
@@ -60,7 +69,8 @@ const formatDateDDMMYYYY = (dateString) => {
 const isoToDDMMYYYY = (isoDateString) => {
     if (!isoDateString || typeof isoDateString !== 'string') return '';
     const parts = isoDateString.split('-'); // [YYYY, MM, DD]
-    return `${parts[2]}-${parts[1]}-${parts[0]}`; // DD-MM-YYYY (NOTE: Uses - for internal consistency)
+    // NOTE: This format (DD-MM-YYYY) is critical for parsing consistency in Apps Script
+    return `${parts[2]}-${parts[1]}-${parts[0]}`; 
 };
 
 // CRITICAL FIX: Parser function to convert DD-MM-YYYY string back to a Date object for comparison/sorting
@@ -122,4 +132,105 @@ const escapeHtml = (unsafe) => {
          .replace(/>/g, "&gt;")
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
+};
+
+
+// -------------------------------------------------------------------
+// 2. Encryption Utilities (AES-GCM)
+// -------------------------------------------------------------------
+const KEY_STORAGE_KEY = 'homeledger_crypto_key';
+const ENCRYPTION_ALGO = { name: "AES-GCM", length: 256 };
+const KEY_USAGE = ["encrypt", "decrypt"];
+
+// Helper to convert Uint8Array to Base64 string
+const uint8ArrayToBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+// Helper to convert Base64 string to Uint8Array
+const base64ToUint8Array = (base64) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+};
+
+// Async function to get or generate the encryption key
+const getEncryptionKey = async () => {
+    let keyData = localStorage.getItem(KEY_STORAGE_KEY);
+    let cryptoKey;
+
+    if (keyData) {
+        // Import existing key
+        const rawKey = base64ToUint8Array(keyData);
+        cryptoKey = await crypto.subtle.importKey(
+            "raw", 
+            rawKey, 
+            ENCRYPTION_ALGO, 
+            true, // extractable
+            KEY_USAGE
+        );
+    } else {
+        // Generate new key
+        cryptoKey = await crypto.subtle.generateKey(
+            ENCRYPTION_ALGO, 
+            true, 
+            KEY_USAGE
+        );
+        // Export and save the raw key
+        const exportedKey = await crypto.subtle.exportKey("raw", cryptoKey);
+        localStorage.setItem(KEY_STORAGE_KEY, uint8ArrayToBase64(exportedKey));
+    }
+    return cryptoKey;
+};
+
+// Encrypts data (string) and returns a Base64-encoded string containing IV + Ciphertext
+const encryptData = async (data) => {
+    if (!data) return null;
+    try {
+        const key = await getEncryptionKey();
+        const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM uses 12-byte IV
+        const encodedData = new TextEncoder().encode(data);
+
+        const ciphertext = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encodedData
+        );
+
+        // Combine IV and Ciphertext, then Base64 encode the result
+        const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(ciphertext), iv.length);
+
+        return uint8ArrayToBase64(combined);
+
+    } catch (e) {
+        console.error('Encryption failed:', e);
+        return null; 
+    }
+};
+
+// Decrypts Base64-encoded string back to JSON string
+const decryptData = async (encryptedBase64) => {
+    if (!encryptedBase64) return null;
+    try {
+        const key = await getEncryptionKey();
+        const combined = base64ToUint8Array(encryptedBase64);
+
+        const iv = combined.slice(0, 12); // First 12 bytes is IV
+        const ciphertext = combined.slice(12); // Rest is Ciphertext
+
+        const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            ciphertext
+        );
+
+        return new TextDecoder().decode(decrypted);
+
+    } catch (e) {
+        console.error('Decryption failed (Likely tamper or corrupted key):', e);
+        return null;
+    }
 };
