@@ -77,12 +77,14 @@ function showToast(message, type = 'info', duration = 3000) {
 function setupNetworkListeners() {
     // Auto-sync on connection restore
     window.addEventListener('online', () => {
+        console.log("coded: app.js");
         console.log('Internet connection restored — syncing queued records...');
         attemptPendingSync(); // Calls function from data-service.js
     });
 
     // Notify user when connection is lost
     window.addEventListener('offline', () => {
+        console.log("coded: app.js");
         console.log('Internet connection lost — operating in offline mode.');
         showToast('Offline mode — entries will be queued.', 'offline', 6000);
     });
@@ -417,15 +419,25 @@ function handleSortClick(key){
 
 function applyFilters(){
     let filtered = [...store.records];
+    console.log("coded: app.js");
 
     // Date Filter
-    // Fix Date Handling: Remove 'Z' to respect local timezone (3)
-    const fromDate = filterFrom.value ? new Date(filterFrom.value + 'T00:00:00') : null;
-    const toDate = filterTo.value ? new Date(filterTo.value + 'T23:59:59') : null; 
+    // filterFrom.value and filterTo.value are YYYY-MM-DD
+    const fromDateStr = filterFrom.value;
+    const toDateStr = filterTo.value; 
+    
+    // FIX 1: Create filter date objects for the START and END of the day (Local Time)
+    const fromDate = fromDateStr ? new Date(fromDateStr + 'T00:00:00') : null;
+    const toDate = toDateStr ? new Date(toDateStr + 'T23:59:59') : null; 
+    
     if (fromDate || toDate) {
         filtered = filtered.filter(r => {
-            // CRITICAL FIX: Parse DD-MM-YYYY string from restored record into a Date object
+            // CRITICAL FIX 2: Use the robust parser for the stored DD-MM-YYYY format
             const rDate = parseDDMMYYYYtoJSDate(r.date); 
+            
+            // Check if parsing failed (date is epoch start 1970-01-01) or date range fails
+            if (isNaN(rDate.getTime())) return false; 
+            
             return (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate);
         });
     }
@@ -674,7 +686,7 @@ function init(){
         showToast('App loaded in Offline mode.', 'offline', 6000);
     }
 
-    setupEventListeners(); // CRITICAL FIX: Ensure this is called!
+    setupEventListeners(); // CRITICAL FIX: Event listeners are now attached!
     
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
