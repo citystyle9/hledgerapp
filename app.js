@@ -1,4 +1,4 @@
-// Optimization Summary: Converted init function to async and used await for loadFromStorage to resolve an issue where event listeners were not being attached due to an unresolved promise.
+// Optimization Summary: Converted init function to async and enclosed core logic in try...finally block to guarantee setupEventListeners is called, fixing the non-responsive button issue.
 // -------------------------------------------------------------------
 // 1. DOM References and Constants (Keep Global in Scope)
 // -------------------------------------------------------------------
@@ -777,49 +777,57 @@ const setupEventListeners = () => {
 // 9. Initialization (Final Call)
 // -------------------------------------------------------------------
 const init = async () => {
-    // FIX: Await loadFromStorage as it now performs async crypto operations
-    await loadFromStorage(); // From data-service.js
-    
-    const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-    applyTheme(savedTheme);
+    try {
+        // FIX: Await loadFromStorage as it now performs async crypto operations
+        await loadFromStorage(); // This is the potential source of failure/hang
 
-    // Default Filter 'Today' set kiya gaya hai:
-    const todayISO = isoToday();
-    filterFrom.value = todayISO; 
-    filterTo.value = todayISO;   
-    quickFilterButtons.today.classList.add('active');
-    
-    // Set initial sort indicator in the header
-    const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
-    if (initialHeader) {
-        initialHeader.setAttribute('data-sort-order', currentSort.order);
-    }
-    
-    // Calculate and render with initial data and filters
-    calculateGlobalTotals(); 
-    
-    // Auto Sync Check
-    if (pendingSyncQueue.length > 0) {
-        attemptPendingSync(); // From data-service.js
-    }
-    
-    addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
-    
-    // NEW: Initial offline check on load
-    if (!navigator.onLine) {
-        showToast('App loaded in Offline mode.', 'offline', 6000);
-    }
+        const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+        applyTheme(savedTheme);
 
-    setupEventListeners(); // CRITICAL FIX: Event listeners are now attached!
-    
-    // PWA Service Worker Registration
-    if ('serviceWorker' in navigator) {
-        // Register the service worker at the correct scope path
-        navigator.serviceWorker.register('/hledgerapp/service-worker.js').then(reg => {
-            console.log('Service Worker registered successfully:', reg);
-        }).catch(error => {
-            console.log('Service Worker registration failed:', error);
-        });
+        // Default Filter 'Today' set kiya gaya hai:
+        const todayISO = isoToday();
+        filterFrom.value = todayISO; 
+        filterTo.value = todayISO;   
+        quickFilterButtons.today.classList.add('active');
+        
+        // Set initial sort indicator in the header
+        const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+        if (initialHeader) {
+            initialHeader.setAttribute('data-sort-order', currentSort.order);
+        }
+        
+        // Calculate and render with initial data and filters
+        calculateGlobalTotals(); 
+        
+        // Auto Sync Check
+        if (pendingSyncQueue.length > 0) {
+            attemptPendingSync(); // From data-service.js
+        }
+        
+        addLog(`[${nowTsForLog()}] App loaded (v${VERSION_TAG.split('v')[1]}).`);
+        
+        // NEW: Initial offline check on load
+        if (!navigator.onLine) {
+            showToast('App loaded in Offline mode.', 'offline', 6000);
+        }
+
+    } catch(e) {
+        console.error("CRITICAL: Initialization failed during data load/crypto setup.", e);
+        // If loading fails, continue setup with empty/default state
+        showToast("CRITICAL ERROR: Data initialization failed. App is running in empty/default state.", 'danger', 10000);
+    } finally {
+        // CRITICAL FIX: Ensure event listeners are attached regardless of whether data loading succeeded or failed.
+        setupEventListeners(); 
+        
+        // PWA Service Worker Registration is non-critical and can run last.
+        if ('serviceWorker' in navigator) {
+            // Register the service worker at the correct scope path
+            navigator.serviceWorker.register('/hledgerapp/service-worker.js').then(reg => {
+                console.log('Service Worker registered successfully:', reg);
+            }).catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+        }
     }
 };
 
