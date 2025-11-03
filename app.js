@@ -1,4 +1,4 @@
-// Optimization Summary: Converted to modern ES6 syntax, integrated centralized color helper, and ensured full compatibility with encrypted data service.
+// Optimization Summary: Converted to ES6 syntax. Integrated AES-GCM load/save. Centralized color logic. Updated saveRecord/deleteRecord/openDeleteConfirm to handle negative Expense amounts for storage/sync, while displaying positive absolute values.
 // -------------------------------------------------------------------
 // 1. DOM References and Constants (Keep Global in Scope)
 // -------------------------------------------------------------------
@@ -103,12 +103,15 @@ const calculateGlobalTotals = () => {
     let income = 0, loan = 0, expense = 0;
     store.records.forEach(r => {
         const amount = Number(r.amount || 0);
+        
+        // FIX: Read Expense amounts as negative for correct summation
         if (r.account === 'Income') income += amount;
         else if (r.account === 'Loan') loan += amount;
-        else if (r.account === 'Expense') expense += amount;
+        else if (r.account === 'Expense') expense += amount; // Expense is already negative
     });
     
-    const globalBalance = (income + loan) - expense;
+    // FIX: Balance calculation remains correct as expense is already negative
+    const globalBalance = income + loan + expense;
 
     // --- 1. Only Update Current Balance (Total) ---
     document.getElementById('current-balance').textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -125,9 +128,10 @@ const recalcSummaryAndRender = (dateFilteredList, fullFilteredList) => {
     let income = 0, loan = 0, expense = 0;
     dateFilteredList.forEach(r => {
         const amount = Number(r.amount || 0);
-        if (r.account === 'Income') income += amount;
-        else if (r.account === 'Loan') loan += amount;
-        else if (r.account === 'Expense') expense += amount;
+        // Use Math.abs for display summary calculation to show positive sums
+        if (r.account === 'Income') income += Math.abs(amount);
+        else if (r.account === 'Loan') loan += Math.abs(amount);
+        else if (r.account === 'Expense') expense += Math.abs(amount); 
     });
     
     // --- Update Income/Loan/Expense with DATE FILTERED amounts ---
@@ -137,14 +141,16 @@ const recalcSummaryAndRender = (dateFilteredList, fullFilteredList) => {
     
     
     // 2. Calculate Filtered Balance based on FULL FILTERED LIST
-    let fullIncome = 0, fullLoan = 0, fullExpense = 0;
+    let filteredIncome = 0, filteredLoan = 0, filteredExpense = 0;
     fullFilteredList.forEach(r => {
         const amount = Number(r.amount || 0);
-        if (r.account === 'Income') fullIncome += amount;
-        else if (r.account === 'Loan') fullLoan += amount;
-        else if (r.account === 'Expense') fullExpense += amount;
+        // Calculate based on stored sign
+        if (r.account === 'Income') filteredIncome += amount;
+        else if (r.account === 'Loan') filteredLoan += amount;
+        else if (r.account === 'Expense') filteredExpense += amount;
     });
-    const filteredBalance = (fullIncome + fullLoan) - fullExpense;
+    // FIX: Filtered balance remains sum of all (since expense is negative)
+    const filteredBalance = filteredIncome + filteredLoan + filteredExpense;
     
     // --- Update the Filtered Net Balance ---
     document.getElementById('summary-filtered-balance').textContent = 'Rs ' + filteredBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -210,7 +216,8 @@ const renderRecordsList = (list) => {
 
         const amountDiv = document.createElement('div');
         amountDiv.style.cssText = `color:${amountColor};font-weight:700`;
-        amountDiv.textContent = formatAmount(rec.amount, rec.sign);
+        // FIX: Display absolute (positive) value only
+        amountDiv.textContent = formatAmount(Math.abs(rec.amount), rec.sign);
         row.appendChild(amountDiv);
 
         const actionsDiv = document.createElement('div');
@@ -302,7 +309,8 @@ const openEdit = (guid) => {
     dateInput.value = ddMMYYYYToISO(record.date); 
     accountSelect.value = record.account;
     descInput.value = record.desc;
-    amtInput.value = record.amount;
+    // FIX: Show absolute (positive) amount in the edit input field
+    amtInput.value = Math.abs(record.amount); 
     
     accountSelect.disabled = false;
     saveBtn.className = `btn-save ${record.account.toLowerCase()}`;
@@ -323,7 +331,9 @@ const openDeleteConfirm = (guid) => {
     
     // Security Improvement: Use a safer HTML construction/text escaping when using innerHTML
     const safeDesc = escapeHtml(record.desc); // Uses new utility function
-    const amountHtml = `<span style="font-weight:700; color: ${amountColor};">${formatAmount(record.amount, record.sign)}</span>`;
+    // FIX: Display absolute (positive) value only in delete modal
+    const displayAmount = formatAmount(Math.abs(record.amount), record.sign);
+    const amountHtml = `<span style="font-weight:700; color: ${amountColor};">${displayAmount}</span>`;
     
     deleteDetailsDiv.innerHTML = `
         <strong>Date:</strong> ${formatDateDDMMYYYY(record.date)}<br>
@@ -350,22 +360,27 @@ const saveRecord = () => {
         showToast('Please fill in all fields (Date, Description, Amount).', 'danger', 4000);
         return;
     }
-    const amount = Number(amtInput.value);
+    let amount = Number(amtInput.value);
     if (isNaN(amount) || amount <= 0) {
         showToast('Please enter a valid amount greater than zero.', 'danger', 4000);
         return;
     }
-
+    
     const account = accountSelect.value;
     const sign = (account === 'Expense') ? 'expense' : 'positive';
     const sheetStatus = editingId ? 'UPDATED' : 'CREATED'; 
+
+    // FIX: Convert Expense to negative amount for internal storage
+    if (sign === 'expense') {
+        amount = -amount; // Store negative value
+    }
 
     const newRecord = {
         guid: editingId || generateGuid(),
         date: dateInput.value, // This is ISO YYYY-MM-DD from the input
         account: account,
         desc: descInput.value.trim(),
-        amount: amount.toFixed(2), 
+        amount: amount.toFixed(2), // Store with 2 decimal places and sign
         sign: sign,
     };
     
@@ -375,17 +390,19 @@ const saveRecord = () => {
     newRecord.date = dateForStoreAndSheet; // Update the record before storage/sync
 
     let logAction;
+    // Display amount uses absolute value for logging
+    const logAmount = formatAmount(Math.abs(newRecord.amount), newRecord.sign);
 
     if (editingId) {
         const index = store.records.findIndex(r => r.guid === editingId);
         if (index !== -1) {
             const oldRecord = store.records[index];
             store.records[index] = newRecord;
-            logAction = `[${nowTsForLog()}] UPDATED: ${oldRecord.account} ${formatAmount(oldRecord.amount, oldRecord.sign)} -> ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
+            logAction = `[${nowTsForLog()}] UPDATED: ${oldRecord.account} ${formatAmount(Math.abs(oldRecord.amount), oldRecord.sign)} -> ${logAmount} (${newRecord.desc})`;
         }
     } else {
         store.records.push(newRecord);
-        logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
+        logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${logAmount} (${newRecord.desc})`;
     }
     
     // NOTE: sendRecordToSheets receives the DD-MM-YYYY date from newRecord.date
@@ -406,7 +423,8 @@ const deleteRecord = (guid) => {
     // Status Consistency: DELETED remains
     sendRecordToSheets(deletedRecord, 'DELETED'); 
 
-    addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(deletedRecord.amount, deletedRecord.sign)} (${deletedRecord.desc})`);
+    // FIX: Log uses absolute value
+    addLog(`[${nowTsForLog()}] DELETED: ${deletedRecord.account} ${formatAmount(Math.abs(deletedRecord.amount), deletedRecord.sign)} (${deletedRecord.desc})`);
     calculateGlobalTotals();
     closeModal();
 };
@@ -501,7 +519,8 @@ const applyFilters = () => {
     if (searchTerm) {
         filtered = filtered.filter(r => 
             r.desc.toLowerCase().includes(searchTerm) || 
-            r.amount.toString().includes(searchTerm) ||
+            // FIX: Search filter checks the absolute value for consistency
+            Math.abs(Number(r.amount)).toString().includes(searchTerm) ||
             r.account.toLowerCase().includes(searchTerm)
         );
     }
@@ -514,6 +533,7 @@ const applyFilters = () => {
         let valB = b[key];
 
         if (key === 'amount') {
+            // FIX: Sort by numeric value (includes sign)
             valA = Number(valA);
             valB = Number(valB);
         } else if (key === 'date') {
@@ -611,8 +631,8 @@ const exportCSV = () => {
     store.records.forEach(r => {
         // Double-quote escape for CSV
         const safeDesc = `"${r.desc.replace(/"/g, '""')}"`; 
-        // Use DD/MM/YYYY format in CSV
-        csv += `${formatDateDDMMYYYY(r.date)},${r.account},${safeDesc},${r.amount},${r.sign},${r.guid}\n`;
+        // FIX: Export absolute value in CSV (relying on 'Sign' field for clarity)
+        csv += `${formatDateDDMMYYYY(r.date)},${r.account},${safeDesc},${Math.abs(r.amount).toFixed(2)},${r.sign},${r.guid}\n`;
     });
 
     const filename = `homeledger_export_${isoToday().replace(/-/g, '')}.csv`;
@@ -626,12 +646,12 @@ const restoreData = (event) => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const data = JSON.parse(e.target.result);
             if (data.records && Array.isArray(data.records)) {
                 
-                // IMPORTANT: Ensure all restored records have the correct DD-MM-YYYY date format
+                // IMPORTANT: Ensure all restored records have the correct DD-MM-YYYY date format AND correct sign
                 store.records = data.records.map(r => {
                     // Safety check for basic structure
                     if (!r || typeof r.date !== 'string' || typeof r.amount === undefined) {
@@ -639,7 +659,6 @@ const restoreData = (event) => {
                     }
                     
                     // CRITICAL FIX: Ensure restored record date is stored as DD-MM-YYYY string
-                    // This handles backups from versions where date might be stored differently
                     let dateString = r.date;
                     // Handle DD/MM/YYYY format (from old export CSVs) and convert to internal DD-MM-YYYY
                     if (dateString.match(/^\d{2}\/\d{2}\/\d{4}$/)) { 
@@ -654,8 +673,17 @@ const restoreData = (event) => {
                         r.date = dateString; // Assume it's already DD-MM-YYYY
                     }
                     
-                    // Ensure amount is a string with 2 decimal places
-                    r.amount = Number(r.amount).toFixed(2);
+                    // FIX: Ensure amount respects the negative sign policy for Expense
+                    let amountValue = Number(r.amount);
+                    if (r.account === 'Expense' && amountValue > 0) {
+                        amountValue = -amountValue;
+                    } else if ((r.account === 'Income' || r.account === 'Loan') && amountValue < 0) {
+                        // Correct sign if income/loan was mistakenly stored negative
+                        amountValue = Math.abs(amountValue);
+                    }
+                    
+                    r.amount = amountValue.toFixed(2);
+                    r.sign = (r.account === 'Expense') ? 'expense' : 'positive'; // Ensure sign property is correct
                     
                     return r;
                 }).filter(r => r !== null); // Filter out invalid records
@@ -665,6 +693,8 @@ const restoreData = (event) => {
           
                 store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
                 calculateGlobalTotals();
+                // FIX: Save state after restoration (triggers encryption)
+                await saveToStorage(); 
                 showToast(`Successfully restored ${store.records.length} records.`, 'online', 5000);
                 addLog(`[${nowTsForLog()}] Local Restore: ${store.records.length} records loaded.`);
             } else {
