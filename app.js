@@ -812,7 +812,7 @@ const init = async () => {
         }
 
     } catch(e) {
-        console.error("CRITICAL: Initialization failed during data load/crypto setup.", e);
+        console.error("CRITICAL: Initialization failed during data load/crypto setup. Proceeding with default UI setup.", e);
         // If loading fails, continue setup with empty/default state
         showToast("CRITICAL ERROR: Data initialization failed. App is running in empty/default state.", 'danger', 10000);
     } finally {
