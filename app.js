@@ -344,6 +344,11 @@ function saveRecord() {
         sign: sign,
     };
 
+    // CRITICAL FIX: Convert new record date (YYYY-MM-DD) to display format (DD-MM-YYYY)
+    // to match the format used for filtering after restore.
+    const dateToStore = isoToDDMMYYYY(newRecord.date);
+    newRecord.date = dateToStore;
+
     if (editingId) {
         const index = store.records.findIndex(r => r.guid === editingId);
         if (index !== -1) {
@@ -356,6 +361,8 @@ function saveRecord() {
         logAction = `[${nowTsForLog()}] ADDED: ${newRecord.account} ${formatAmount(newRecord.amount, newRecord.sign)} (${newRecord.desc})`;
     }
     
+    // NOTE: sendRecordToSheets will send the DD-MM-YYYY date to the backend, 
+    // which the backend is configured to parse correctly.
     sendRecordToSheets(newRecord, sheetStatus); 
     
     addLog(logAction);
@@ -432,7 +439,7 @@ function applyFilters(){
     
     if (fromDate || toDate) {
         filtered = filtered.filter(r => {
-            // CRITICAL FIX 2: Use the robust parser for the stored DD-MM-YYYY format
+            // CRITICAL FIX 2: Parse DD-MM-YYYY string from restored record into a Date object
             const rDate = parseDDMMYYYYtoJSDate(r.date); 
             
             // Check if parsing failed (date is epoch start 1970-01-01) or date range fails
