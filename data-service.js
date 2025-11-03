@@ -1,4 +1,4 @@
-// Optimization Summary: Converted to ES6 (const/let, async/await, arrow functions), improved error handling for localStorage parsing, added safety checks to prevent silent failures, and enhanced sync logging. Integrated AES-GCM encryption for localStorage.
+// Optimization Summary: Converted to ES6 syntax. Integrated AES-GCM encryption for localStorage. loadFromStorage updated to handle both positive and negative amounts from restoreDataFromSheets, ensuring Expense records are consistently stored with their actual sign.
 // -------------------------------------------------------------------
 // 1. Data Store and Constants
 // -------------------------------------------------------------------
@@ -99,6 +99,9 @@ const loadFromStorage = async () => {
         // Clear encryption key to force regeneration if it was the source of corruption
         localStorage.removeItem(KEY_STORAGE_KEY); 
         showToast('Local data corrupted or decryption failed. Data has been reset.', 'danger', 7000);
+        
+        // CRITICAL FIX: Re-throw to ensure init() knows loading failed (though it should handle cleanup in finally)
+        throw e;
     }
 };
 
@@ -110,8 +113,8 @@ const addToPendingQueue = (record, recordStatus) => {
     // NOTE: This logic should ensure we use DD-MM-YYYY format for `record.date`
     const existingIndex = pendingSyncQueue.findIndex(item => item.id === record.guid);
     
-    // Convert negative 'expense' amount back to negative number for sheet backend
-    const amountValue = (record.sign === 'expense') ? -Number(record.amount) : Number(record.amount);
+    // FIX: Amount value already carries the correct sign from app.js (negative for expense)
+    const amountValue = Number(record.amount);
 
     const sheetData = {
         id: record.guid,
@@ -143,7 +146,8 @@ const sendRecordToSheets = async (record, recordStatus = 'CREATED') => {
         return;
     }
     
-    const amountValue = (record.sign === 'expense') ? -Number(record.amount) : Number(record.amount);
+    // FIX: Amount value already carries the correct sign from app.js (negative for expense)
+    const amountValue = Number(record.amount);
 
     const sheetData = {
         id: record.guid,
@@ -295,9 +299,19 @@ const restoreDataFromSheets = (isAutoLoad) => {
                   return null;
               }
               
-              // CRITICAL FIX: The Apps Script returns DD-MM-YYYY strings for 'date'.
-              r.amount = Number(r.amount).toFixed(2); // Ensure amount is string with 2 decimals
+              let amountValue = Number(r.amount);
               
+              // FIX: Ensure restored amount has correct sign and stores as string
+              if (r.account === 'Expense' && amountValue > 0) {
+                   amountValue = -amountValue;
+              } else if ((r.account === 'Income' || r.account === 'Loan') && amountValue < 0) {
+                   amountValue = Math.abs(amountValue);
+              }
+              
+              r.amount = amountValue.toFixed(2); // Ensure amount is string with 2 decimals and correct sign
+              r.sign = (r.account === 'Expense') ? 'expense' : 'positive';
+              
+              // CRITICAL FIX: The Apps Script returns DD-MM-YYYY strings for 'date'.
               // Filter based on normalized status
               return (r.status_normalized === 'CREATED' || r.status_normalized === 'UPDATED') ? r : null; 
           }).filter(r => r !== null); // Remove null entries (DELETED/invalid records)
