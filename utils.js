@@ -1,4 +1,4 @@
-// Optimization Summary: Converted to ES6, consolidated date formatting/parsing, and added AES-GCM encryption/decryption utilities for localStorage data persistence. Added centralized color helper.
+// Optimization Summary: Centralized color helper (Task 3). Updated all formatting to use DD/MM/YYYY (Task 2). Added AES-GCM encryption/decryption utilities for localStorage data persistence (Task 1).
 // -------------------------------------------------------------------
 // 1. Helper Functions 
 // -------------------------------------------------------------------
@@ -6,15 +6,16 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const nowTsForLog = () => {
   const d = new Date();
-  // FIX: Ensure log timestamp uses / separator consistently
+  // FIX: Ensure log timestamp uses / separator consistently (DD/MM/YYYY HH:MM:SS)
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
+// NOTE: This function only formats the numeric part for display (absolute value is handled in app.js)
 const formatAmount = (n, sign) => {
   return 'Rs ' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 };
 
-// FIX: Centralized helper for amount color logic
+// FIX: Centralized helper for amount color logic (Task 3)
 const getAccountColor = (account) => {
     if (account === 'Income') return 'var(--success)'; // Green
     if (account === 'Loan') return 'var(--warning)';   // Yellow
@@ -49,31 +50,31 @@ const ddMMYYYYToISO = (ddmmyyyy) => {
     }
 };
 
-// Returns DD/MM/YYYY string (for display/export)
+// FIX: Returns DD/MM/YYYY string (for display/export) (Task 2)
 const formatDateDDMMYYYY = (dateString) => {
     if (!dateString || typeof dateString !== 'string') return '';
     // If input is YYYY-MM-DD (from HTML input value), convert it to DD/MM/YYYY
     if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const parts = dateString.split('-'); // YYYY-MM-DD
-        return `${parts[2]}/${parts[1]}/${parts[0]}`; // FIX: Use / separator
+        return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
     }
     // If input is already DD-MM-YYYY, convert separator to DD/MM/YYYY
     if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
         const parts = dateString.split('-'); // DD-MM-YYYY
-        return `${parts[0]}/${parts[1]}/${parts[2]}`; // FIX: Use / separator
+        return `${parts[0]}/${parts[1]}/${parts[2]}`; // DD/MM/YYYY
     }
     return '';
 };
 
-// CRITICAL FIX: Converts ISO (YYYY-MM-DD) string to DD-MM-YYYY string format (for storage/sheet consistency)
+// CRITICAL: Converts ISO (YYYY-MM-DD) string to internal DD-MM-YYYY string format
 const isoToDDMMYYYY = (isoDateString) => {
     if (!isoDateString || typeof isoDateString !== 'string') return '';
     const parts = isoDateString.split('-'); // [YYYY, MM, DD]
-    // NOTE: This format (DD-MM-YYYY) is critical for parsing consistency in Apps Script
+    // NOTE: Uses '-' for internal data consistency, which the parsing function (in code.gs/utils) expects.
     return `${parts[2]}-${parts[1]}-${parts[0]}`; 
 };
 
-// CRITICAL FIX: Parser function to convert DD-MM-YYYY string back to a Date object for comparison/sorting
+// CRITICAL: Parser function to convert internal DD-MM-YYYY string back to a Date object for comparison/sorting
 const parseDDMMYYYYtoJSDate = (ddmmyyyy) => {
     if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return new Date(NaN); 
     try {
@@ -136,7 +137,7 @@ const escapeHtml = (unsafe) => {
 
 
 // -------------------------------------------------------------------
-// 2. Encryption Utilities (AES-GCM)
+// 2. Encryption Utilities (AES-GCM) (Task 1)
 // -------------------------------------------------------------------
 const KEY_STORAGE_KEY = 'homeledger_crypto_key';
 const ENCRYPTION_ALGO = { name: "AES-GCM", length: 256 };
