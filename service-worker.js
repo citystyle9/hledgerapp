@@ -1,3 +1,4 @@
+// Optimization Summary: Used const/let consistently. Improved variable scoping within fetchAndFallback for clarity. Updated urlsToCache to include all new assets.
 const CACHE_NAME = 'homeledger-v1.5.3';
 // Updated to match app version
 const basePath = '/hledgerapp/';
@@ -13,11 +14,14 @@ const urlsToCache = [
   basePath + 'offline.html', // New: Offline fallback page
   // Icons must also be cached
   basePath + 'icons/icon-192x192.png',
-  basePath + 'icons/icon-512x512.png'
+  basePath + 'icons/icon-512x512.png',
+  basePath + 'icons/icon-32x32.png', // Added missing icon
+  basePath + 'icons/icon-16x16.png', // Added missing icon
+  basePath + 'icons/icon-180x180.png' // Added missing icon
 ];
 
 // Helper function to handle fallback: returns the response or the offline page response
-function fetchAndFallback(event) {
+const fetchAndFallback = (event) => {
     // 1. Try to fetch from the network (for updates/new content)
     // 2. If network fails, fall back to cache
     return fetch(event.request).catch(async () => {
