@@ -68,7 +68,7 @@ function addToPendingQueue(record, recordStatus) {
     const existingIndex = pendingSyncQueue.findIndex(item => item.id === record.guid);
     const sheetData = {
         id: record.guid,
-        date: record.date,
+        date: record.date, // Date is already in DD-MM-YYYY format here
         description: record.desc,
         amount: record.sign === 'expense' ?
         -Number(record.amount) : Number(record.amount), 
@@ -97,7 +97,7 @@ async function sendRecordToSheets(record, recordStatus = 'CREATED') {
     
     const sheetData = {
         id: record.guid,
-        date: record.date,
+        date: record.date, // Date is already in DD-MM-YYYY format here
         description: record.desc,
         amount: record.sign === 'expense' ?
         -Number(record.amount) : Number(record.amount), 
