@@ -1,4 +1,4 @@
-// Optimization Summary: Converted to modern ES6 syntax (const/let, arrow functions), implemented better XSS protection in rendering, improved logging/date consistency, fixed critical date filtering logic for DD-MM-YYYY, and ensured DOMContentLoaded is used correctly.
+// Optimization Summary: Converted to modern ES6 syntax, integrated centralized color helper, and ensured full compatibility with encrypted data service.
 // -------------------------------------------------------------------
 // 1. DOM References and Constants (Keep Global in Scope)
 // -------------------------------------------------------------------
@@ -188,17 +188,8 @@ const renderRecordsList = (list) => {
         row.className = 'record-row'; 
         row.dataset.id = rec.guid;
         
-        let amountColor;
-        // FIX: Update amount color logic to consistently use the three account types
-        if (rec.account === 'Income') {
-            amountColor = 'var(--success)'; // Green
-        } else if (rec.account === 'Loan') {
-            amountColor = 'var(--warning)'; // Yellow
-        } else if (rec.account === 'Expense') {
-            amountColor = 'var(--danger)'; // Red
-        } else {
-            amountColor = 'var(--text-color)'; // Default fallback
-        }
+        // FIX: Use centralized helper function for consistent color logic
+        const amountColor = getAccountColor(rec.account);
 
         // Format date for display (DD/MM/YYYY)
         const displayDate = formatDateDDMMYYYY(rec.date); 
@@ -327,17 +318,8 @@ const openDeleteConfirm = (guid) => {
     
     deleteConfirmBtn.dataset.id = guid;
     
-    // Use the same color logic for the delete modal description
-    let amountColor;
-    if (record.account === 'Income') {
-        amountColor = 'var(--success)'; 
-    } else if (record.account === 'Loan') {
-        amountColor = 'var(--warning)'; 
-    } else if (record.account === 'Expense') {
-        amountColor = 'var(--danger)'; 
-    } else {
-        amountColor = 'var(--text-color)'; 
-    }
+    // FIX: Use centralized helper function for consistent color logic
+    const amountColor = getAccountColor(record.account);
     
     // Security Improvement: Use a safer HTML construction/text escaping when using innerHTML
     const safeDesc = escapeHtml(record.desc); // Uses new utility function
@@ -437,6 +419,8 @@ const deleteAllData = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PENDING_SYNC_KEY); 
     localStorage.removeItem(SORT_KEY);
+    // FIX: Clear encryption key as well
+    localStorage.removeItem(KEY_STORAGE_KEY);
     
     store.records = [];
     pendingSyncQueue = [];
@@ -601,12 +585,14 @@ const download = (data, filename, type) => {
     }, 0);
 };
 
-const backupData = () => {
+const backupData = async () => {
+    // NOTE: Backup JSON is NOT encrypted for portability, only localStorage is encrypted.
     const dataToSave = {
         version: VERSION_TAG,
         timestamp: nowTsForLog(),
         records: store.records,
         logs: store.logs,
+        // The queue might contain sensitive data, so decrypt it before putting into unencrypted backup
         pendingSync: pendingSyncQueue 
     };
     const filename = `homeledger_backup_${isoToday().replace(/-/g, '')}.json`; // Use clean ISO date for filename
@@ -760,8 +746,9 @@ const setupEventListeners = () => {
 // -------------------------------------------------------------------
 // 9. Initialization (Final Call)
 // -------------------------------------------------------------------
-const init = () => {
-    loadFromStorage(); // From data-service.js
+const init = async () => {
+    // FIX: Await loadFromStorage as it now performs async crypto operations
+    await loadFromStorage(); // From data-service.js
     
     const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
     applyTheme(savedTheme);
