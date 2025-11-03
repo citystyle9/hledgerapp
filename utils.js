@@ -37,6 +37,8 @@ function parseDDMMYYYYtoJSDate(ddmmyyyy) {
         const date = new Date(parts[2], parts[1] - 1, parts[0]);
         // Validate if date is valid
         if (isNaN(date.getTime())) {
+            console.log("coded: utils.js");
+            console.warn(`Invalid date conversion detected: ${ddmmyyyy}`);
             return new Date(0);
         }
         return date;
