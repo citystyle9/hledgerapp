@@ -88,7 +88,8 @@ input,select{
     color:var(--text-color); 
     box-sizing: border-box; 
     transition: border-color 0.2s, box-shadow 0.2s;
-    font-size: 16px;
+    /* Added to prevent zoom on iOS */
+    font-size: 16px; 
 }
 input:focus, select:focus, button:focus{
     outline: none;
@@ -232,7 +233,7 @@ footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
     background:var(--input-bg);
     color:var(--text-color); 
     box-sizing: border-box; 
-    font-size: 16px; /* <-- THE FIX */
+    font-size: 16px; 
 }
 .modal .row-2{display:block;} 
 .modal .actions-row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
@@ -258,7 +259,7 @@ footer{text-align:center;font-size:12px;opacity:0.7;margin-top:10px}
   /* FIX: Records Table on Mobile - Show Date, Description, Amount, Action */
   .records-head, .record-row {
       /* Grid columns mapping to: Date(1st), Description(3rd), Amount(4th), Action(5th) */
-      /* Date: 80px, Description: 1fr, Amount: 90px (Increased for clarity), Action: 50px */
+      /* Date: 80px, Account: Hidden (2nd), Description: 1fr (3rd), Amount: 90px (4th), Action: 50px (5th) */
       grid-template-columns: 80px 1fr 90px 50px;
   }
   
@@ -324,23 +325,56 @@ body[data-theme="light"] .theme-toggle::before {
 
 .hidden-file{display:none}
 
-.log-list::-webkit-scrollbar {
+.log-list::-webkit-scrollbar, body::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
-.log-list::-webkit-scrollbar-track {
+.log-list::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
     background: var(--bg);
 }
-.log-list::-webkit-scrollbar-thumb {
+.log-list::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
     background: var(--glass-border);
     border-radius: 4px;
 }
-.log-list::-webkit-scrollbar-thumb:hover {
+.log-list::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
     background: var(--muted);
 }
 /* ------------------------------------------------------------------- */
-
-/* Added from inline */
+/* TOAST STYLES (Moved from index.html) */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.toast {
+    min-width: 250px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    color: white;
+    text-align: center;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    transform: translateY(20px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast.offline {
+    background-color: var(--danger);
+}
+.toast.online {
+    background-color: var(--success);
+}
+/* ------------------------------------------------------------------- */
+/* NEW UTILITY CLASSES (Moved from inline styles in index.html) */
 .balance-right {display:flex;gap:12px;align-items:center}
 .summary-filtered {color:var(--accent)}
 .success-text {color:var(--success);font-weight:700}
