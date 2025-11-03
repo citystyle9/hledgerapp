@@ -424,8 +424,8 @@ function applyFilters(){
     const toDate = filterTo.value ? new Date(filterTo.value + 'T23:59:59') : null; 
     if (fromDate || toDate) {
         filtered = filtered.filter(r => {
-            // Fix Date Handling: Remove 'Z' for local timezone (3)
-            const rDate = new Date(r.date + 'T00:00:00'); 
+            // CRITICAL FIX: Parse DD-MM-YYYY string from restored record into a Date object
+            const rDate = parseDDMMYYYYtoJSDate(r.date); 
             return (!fromDate || rDate >= fromDate) && (!toDate || rDate <= toDate);
         });
     }
@@ -458,6 +458,7 @@ function applyFilters(){
             valA = Number(valA);
             valB = Number(valB);
         }
+        // NOTE: Date sorting relies on the string comparison of YYYY-MM-DD which is correct.
         
         let comparison = 0;
         if (valA > valB) comparison = 1;
