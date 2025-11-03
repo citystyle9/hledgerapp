@@ -28,6 +28,22 @@ function formatDateDDMMYYYY(isoDateString) {
         return isoDateString;
     }
 }
+// CRITICAL FIX: Parser function to convert DD-MM-YYYY string back to a Date object for comparison
+function parseDDMMYYYYtoJSDate(ddmmyyyy) {
+    if (!ddmmyyyy) return new Date(0); // Return epoch start for safety
+    try {
+        const parts = ddmmyyyy.split('-'); // Parts: [DD, MM, YYYY]
+        // Use YYYY, MM-1, DD to create a date object correctly in local timezone
+        const date = new Date(parts[2], parts[1] - 1, parts[0]);
+        // Validate if date is valid
+        if (isNaN(date.getTime())) {
+            return new Date(0);
+        }
+        return date;
+    } catch(e) {
+        return new Date(0); // Return epoch start if parsing fails
+    }
+}
 function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
