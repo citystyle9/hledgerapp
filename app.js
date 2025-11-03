@@ -107,7 +107,9 @@ function calculateGlobalTotals(){
     // --- 1. Only Update Current Balance (Total) ---
     document.getElementById('current-balance').textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     
+    // CRITICAL FIX: Ensure filtering and rendering runs immediately after data change
     applyFilters(); 
+    
     saveToStorage();
 }
 
