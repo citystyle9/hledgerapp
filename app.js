@@ -1,21 +1,17 @@
-// Optimization Summary: Converted all DOM references into a centralized object for clarity. Converted init to use an IIFE and try...finally for guaranteed event listener setup, fixing non-responsive button issue. Used const/let and arrow functions consistently.
+// Optimization Summary: Converted init function to async and enclosed core logic in try...finally block to guarantee setupEventListeners is called, fixing the non-responsive button issue.
+// CRITICAL FIX: Replaced global DOM constant assignments with global 'let' declarations. Assignments are now performed inside init() to ensure DOM readiness before listener setup, fixing non-responsive buttons.
 // -------------------------------------------------------------------
-// 1. Data Store, DOM References and Constants (Keep Global in Scope)
+// 1. DOM References and Constants (Keep Global in Scope)
 // -------------------------------------------------------------------
+let overlay, deleteOverlay, deleteCancelBtn, deleteConfirmBtn, deleteDetailsDiv, resetOverlay, resetCancelBtn, resetConfirmBtn, title, accountSelect, saveBtn, cancelBtn, dateInput, descInput, amtInput, recordsSection, recordsHead, logOverlay, logClose, btnLog, btnReset, filterSearch, filterAccount, filterFrom, filterTo, btnBackup, btnRestore, btnRestoreSheet, btnExport, themeToggle, restoreFileInput, toastContainer;
 
-// Centralized DOM references object (will be populated in init)
-const DOM = {}; 
+let quickFilterButtons = {}; // Initialize as empty object
 
 const THEME_KEY = 'homeledger_theme_v1';
 const SORT_KEY = 'homeledger_sort_v1';
 const VERSION_TAG = 'HomeLedger v1.5.3'; 
-
 let currentSort = { key: 'date', order: 'desc' }; // Initialized globally, loaded from storage
 let editingId = null; // Moved to top level scope
-
-// Global dependencies (must be available in data-service.js scope)
-/* global store, pendingSyncQueue, loadFromStorage, saveToStorage, sendRecordToSheets, attemptPendingSync, restoreDataFromSheets, getAccountColor, formatAmount, formatDateDDMMYYYY, nowTsForLog, isoFormat, isoToday, ddMMYYYYToISO, isoToDDMMYYYY, parseDDMMYYYYtoJSDate, capitalize, generateGuid, getFiscalYearDates, escapeHtml, KEY_STORAGE_KEY */
-
 
 // Helper function definition moved here from utility section (for scope clarity)
 const debounce = (fn, delay) => {
@@ -28,39 +24,41 @@ const debounce = (fn, delay) => {
 
 // CRITICAL FIX: Centralized function to define all DOM references
 const setupDOMReferences = () => {
-    DOM.overlay = document.getElementById('modal-overlay');
-    DOM.deleteOverlay = document.getElementById('delete-overlay');
-    DOM.deleteCancelBtn = document.getElementById('delete-cancel');
-    DOM.deleteConfirmBtn = document.getElementById('delete-confirm-btn');
-    DOM.deleteDetailsDiv = document.getElementById('delete-record-details');
-    DOM.resetOverlay = document.getElementById('reset-overlay'); 
-    DOM.resetCancelBtn = document.getElementById('reset-cancel'); 
-    DOM.resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
-    DOM.title = document.getElementById('modal-title');
-    DOM.accountSelect = document.getElementById('entry-account');
-    DOM.saveBtn = document.getElementById('modal-save');
-    DOM.cancelBtn = document.getElementById('modal-cancel');
-    DOM.dateInput = document.getElementById('entry-date');
-    DOM.descInput = document.getElementById('entry-desc');
-    DOM.amtInput = document.getElementById('entry-amount');
-    DOM.recordsSection = document.getElementById('records-section');
-    DOM.recordsHead = DOM.recordsSection.querySelector('.records-head');
-    DOM.logOverlay = document.getElementById('log-overlay');
-    DOM.logClose = document.getElementById('log-close');
-    DOM.btnLog = document.getElementById('btn-log');
-    DOM.btnReset = document.getElementById('btn-reset');
-    DOM.filterSearch = document.getElementById('filter-search');
-    DOM.filterAccount = document.getElementById('filter-account');
-    DOM.filterFrom = document.getElementById('filter-from');
-    DOM.filterTo = document.getElementById('filter-to');
-    DOM.btnBackup = document.getElementById('btn-backup');
-    DOM.btnRestore = document.getElementById('btn-restore');
-    DOM.btnRestoreSheet = document.getElementById('btn-restore-sheet'); 
-    DOM.btnExport = document.getElementById('btn-export');
-    DOM.themeToggle = document.getElementById('theme-toggle'); 
-    DOM.restoreFileInput = document.getElementById('restore-file');
-    DOM.toastContainer = document.getElementById('toast-container'); 
-    DOM.quickFilterButtons = {
+    overlay = document.getElementById('modal-overlay');
+    deleteOverlay = document.getElementById('delete-overlay');
+    deleteCancelBtn = document.getElementById('delete-cancel');
+    deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+    deleteDetailsDiv = document.getElementById('delete-record-details');
+    resetOverlay = document.getElementById('reset-overlay'); 
+    resetCancelBtn = document.getElementById('reset-cancel'); 
+    resetConfirmBtn = document.getElementById('reset-confirm-btn'); 
+    title = document.getElementById('modal-title');
+    accountSelect = document.getElementById('entry-account');
+    saveBtn = document.getElementById('modal-save');
+    cancelBtn = document.getElementById('modal-cancel');
+    dateInput = document.getElementById('entry-date');
+    descInput = document.getElementById('entry-desc');
+    amtInput = document.getElementById('entry-amount');
+    recordsSection = document.getElementById('records-section');
+    // Guard clause for recordsSection in case it fails to load
+    recordsHead = recordsSection ? recordsSection.querySelector('.records-head') : null;
+    logOverlay = document.getElementById('log-overlay');
+    logClose = document.getElementById('log-close');
+    btnLog = document.getElementById('btn-log');
+    btnReset = document.getElementById('btn-reset');
+    filterSearch = document.getElementById('filter-search');
+    filterAccount = document.getElementById('filter-account');
+    filterFrom = document.getElementById('filter-from');
+    filterTo = document.getElementById('filter-to');
+    btnBackup = document.getElementById('btn-backup');
+    btnRestore = document.getElementById('btn-restore');
+    btnRestoreSheet = document.getElementById('btn-restore-sheet'); 
+    btnExport = document.getElementById('btn-export');
+    themeToggle = document.getElementById('theme-toggle'); 
+    restoreFileInput = document.getElementById('restore-file');
+    toastContainer = document.getElementById('toast-container'); 
+
+    quickFilterButtons = {
         today: document.getElementById('quick-today'),
         yesterday: document.getElementById('quick-yesterday'),
         month: document.getElementById('quick-month'),
@@ -78,27 +76,32 @@ const showToast = (message, type = 'info', duration = 3000) => {
     toast.className = `toast ${type}`;
     // Security Improvement: Use textContent to prevent XSS in toast message
     toast.textContent = message;
-    DOM.toastContainer.appendChild(toast);
+    // CRITICAL FIX: Check if toastContainer exists before appending
+    if (toastContainer) {
+        toastContainer.appendChild(toast);
     
-    // Use requestAnimationFrame for smoother DOM transition/repaint
-    requestAnimationFrame(() => toast.classList.add('show'));
+        // Use requestAnimationFrame for smoother DOM transition/repaint
+        requestAnimationFrame(() => toast.classList.add('show'));
 
-    setTimeout(() => {
-        toast.classList.remove('show');
-        // Wait for CSS transition before removing
-        setTimeout(() => toast.remove(), 300); 
-    }, duration);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            // Wait for CSS transition before removing
+            setTimeout(() => toast.remove(), 300); 
+        }, duration);
+    }
 };
 
 const setupNetworkListeners = () => {
     // Auto-sync on connection restore
     window.addEventListener('online', () => {
+        // console.log('Internet connection restored — syncing queued records...');
         showToast('Connection restored. Syncing...', 'online', 3000);
         attemptPendingSync(); // Calls function from data-service.js
     });
 
     // Notify user when connection is lost
     window.addEventListener('offline', () => {
+        // console.log('Internet connection lost — operating in offline mode.');
         showToast('Offline mode — entries will be queued.', 'offline', 6000);
     });
 };
@@ -123,7 +126,10 @@ const calculateGlobalTotals = () => {
     const globalBalance = income + loan + expense;
 
     // --- 1. Only Update Current Balance (Total) ---
-    document.getElementById('current-balance').textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const currentBalanceEl = document.getElementById('current-balance');
+    if (currentBalanceEl) {
+        currentBalanceEl.textContent = 'Rs ' + globalBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
     
     // CRITICAL FIX: Ensure filtering and rendering runs immediately after data change
     applyFilters(); 
@@ -169,14 +175,17 @@ const recalcSummaryAndRender = (dateFilteredList, fullFilteredList) => {
 };
 
 const renderRecordsList = (list) => {
+    // CRITICAL FIX: Check if recordsSection and recordsHead exist before proceeding
+    if (!recordsSection || !recordsHead) return;
+    
     // Clear all previous rows and empty state
-    Array.from(DOM.recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n => n.remove());
+    Array.from(recordsSection.querySelectorAll('.record-row, .empty-state')).forEach(n => n.remove());
     const rows = (list && Array.isArray(list)) ? list : [];
     
     // Update the sort indicator in the header
     const sortKey = currentSort.key;
     const sortOrder = currentSort.order;
-    DOM.recordsHead.querySelectorAll('div').forEach(div => {
+    recordsHead.querySelectorAll('div').forEach(div => {
         if (div.dataset.sortKey === sortKey) {
             div.setAttribute('data-sort-order', sortOrder);
         } else {
@@ -188,11 +197,11 @@ const renderRecordsList = (list) => {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'empty-state';
         // Check if filters are active
-        const isFiltered = DOM.filterSearch.value || DOM.filterAccount.value !== 'All Accounts' || DOM.filterFrom.value !== isoToday() || DOM.filterTo.value !== isoToday();
+        const isFiltered = filterSearch && filterSearch.value || filterAccount && filterAccount.value !== 'All Accounts' || filterFrom && filterFrom.value !== isoToday() || filterTo && filterTo.value !== isoToday();
         emptyDiv.textContent = isFiltered
                                 ? "No records found matching your current filters."
                                 : "You have no records yet. Click '+ Add Income/Loan/Expense' to get started!";
-        DOM.recordsSection.appendChild(emptyDiv);
+        recordsSection.appendChild(emptyDiv);
         return;
     }
     
@@ -249,11 +258,14 @@ const renderRecordsList = (list) => {
         row.appendChild(actionsDiv);
         fragment.appendChild(row); // Append to fragment
     });
-    DOM.recordsSection.appendChild(fragment); // Single DOM insert
+    recordsSection.appendChild(fragment); // Single DOM insert
 };
 
 const renderLogs = () => {
     const logModalList = document.getElementById('activity-log-modal');
+    // CRITICAL FIX: Check if logModalList exists before proceeding
+    if (!logModalList) return;
+    
     // Optimization: Use innerHTML = '' for faster clear if list is large
     logModalList.innerHTML = ''; 
     
@@ -277,7 +289,7 @@ const addLog = (entry) => {
         store.logs.length = 500;
     }
     // Only re-render logs if the log modal is currently open
-    if (DOM.logOverlay.classList.contains('show')) {
+    if (logOverlay && logOverlay.classList.contains('show')) {
         renderLogs();
     }
     saveToStorage();
@@ -288,52 +300,61 @@ const addLog = (entry) => {
 // -------------------------------------------------------------------
 
 const openModal = (action) => {
+    // CRITICAL FIX: Check if required DOM elements exist
+    if (!title || !accountSelect || !dateInput || !descInput || !amtInput || !saveBtn || !overlay) return;
+    
     editingId = null;
     // Capitalize action for display in title
     const account = capitalize(action); 
 
-    DOM.title.textContent = `Add New ${account}`;
-    DOM.accountSelect.value = account;
-    DOM.dateInput.value = isoToday(); // Saves as YYYY-MM-DD
-    DOM.descInput.value = '';
-    DOM.amtInput.value = '';
+    title.textContent = `Add New ${account}`;
+    accountSelect.value = account;
+    dateInput.value = isoToday(); // Saves as YYYY-MM-DD
+    descInput.value = '';
+    amtInput.value = '';
     
-    DOM.accountSelect.disabled = true;
-    DOM.saveBtn.className = `btn-save ${action}`;
-    DOM.saveBtn.textContent = 'Save';
+    accountSelect.disabled = true;
+    saveBtn.className = `btn-save ${action}`;
+    saveBtn.textContent = 'Save';
     
-    DOM.overlay.classList.add('show');
-    DOM.descInput.focus();
+    overlay.classList.add('show');
+    descInput.focus();
 };
 
 const openEdit = (guid) => {
+    // CRITICAL FIX: Check if required DOM elements exist
+    if (!title || !accountSelect || !dateInput || !descInput || !amtInput || !saveBtn || !overlay) return;
+    
     // Use const for record lookup
     const record = store.records.find(r => r.guid === guid);
     if (!record) return;
 
     editingId = guid;
-    DOM.title.textContent = `Edit ${record.account}`;
+    title.textContent = `Edit ${record.account}`;
     // NOTE: record.date is DD-MM-YYYY in store, but input[type=date] requires YYYY-MM-DD (ISO)
     // CRITICAL FIX: Convert DD-MM-YYYY in store back to ISO (YYYY-MM-DD) for HTML input
-    DOM.dateInput.value = ddMMYYYYToISO(record.date); 
-    DOM.accountSelect.value = record.account;
-    DOM.descInput.value = record.desc;
+    dateInput.value = ddMMYYYYToISO(record.date); 
+    accountSelect.value = record.account;
+    descInput.value = record.desc;
     // FIX: Show absolute (positive) amount in the edit input field
-    DOM.amtInput.value = Math.abs(record.amount); 
+    amtInput.value = Math.abs(record.amount); 
     
-    DOM.accountSelect.disabled = false;
-    DOM.saveBtn.className = `btn-save ${record.account.toLowerCase()}`;
-    DOM.saveBtn.textContent = 'Update'; 
+    accountSelect.disabled = false;
+    saveBtn.className = `btn-save ${record.account.toLowerCase()}`;
+    saveBtn.textContent = 'Update'; 
     
-    DOM.overlay.classList.add('show');
-    DOM.descInput.focus();
+    overlay.classList.add('show');
+    descInput.focus();
 };
 
 const openDeleteConfirm = (guid) => {
+    // CRITICAL FIX: Check if required DOM elements exist
+    if (!deleteConfirmBtn || !deleteDetailsDiv || !deleteOverlay) return;
+    
     const record = store.records.find(r => r.guid === guid);
     if (!record) return;
     
-    DOM.deleteConfirmBtn.dataset.id = guid;
+    deleteConfirmBtn.dataset.id = guid;
     
     // FIX: Use centralized helper function for consistent color logic
     const amountColor = getAccountColor(record.account);
@@ -344,20 +365,20 @@ const openDeleteConfirm = (guid) => {
     const displayAmount = formatAmount(Math.abs(record.amount), record.sign);
     const amountHtml = `<span style="font-weight:700; color: ${amountColor};">${displayAmount}</span>`;
     
-    DOM.deleteDetailsDiv.innerHTML = `
+    deleteDetailsDiv.innerHTML = `
         <strong>Date:</strong> ${formatDateDDMMYYYY(record.date)}<br>
         <strong>Account:</strong> ${record.account}<br>
         <strong>Amount:</strong> ${amountHtml}<br>
         <strong>Description:</strong> ${safeDesc}
     `;
-    DOM.deleteOverlay.classList.add('show');
+    deleteOverlay.classList.add('show');
 };
 
 const closeModal = () => {
-    DOM.overlay.classList.remove('show');
-    DOM.deleteOverlay.classList.remove('show');
-    DOM.resetOverlay.classList.remove('show');
-    DOM.logOverlay.classList.remove('show');
+    if (overlay) overlay.classList.remove('show');
+    if (deleteOverlay) deleteOverlay.classList.remove('show');
+    if (resetOverlay) resetOverlay.classList.remove('show');
+    if (logOverlay) logOverlay.classList.remove('show');
     editingId = null;
     // Close the details menu for cleanup
     const menuDetails = document.querySelector('details.menu');
@@ -365,18 +386,21 @@ const closeModal = () => {
 };
 
 const saveRecord = () => {
+    // CRITICAL FIX: Check if required DOM elements exist
+    if (!dateInput || !descInput || !amtInput || !accountSelect) return;
+    
     // Input Validation
-    if (!DOM.dateInput.value || !DOM.descInput.value || !DOM.amtInput.value) {
+    if (!dateInput.value || !descInput.value || !amtInput.value) {
         showToast('Please fill in all fields (Date, Description, Amount).', 'danger', 4000);
         return;
     }
-    let amount = Number(DOM.amtInput.value);
+    let amount = Number(amtInput.value);
     if (isNaN(amount) || amount <= 0) {
         showToast('Please enter a valid amount greater than zero.', 'danger', 4000);
         return;
     }
     
-    const account = DOM.accountSelect.value;
+    const account = accountSelect.value;
     const sign = (account === 'Expense') ? 'expense' : 'positive';
     const sheetStatus = editingId ? 'UPDATED' : 'CREATED'; 
 
@@ -387,9 +411,9 @@ const saveRecord = () => {
 
     const newRecord = {
         guid: editingId || generateGuid(),
-        date: DOM.dateInput.value, // This is ISO YYYY-MM-DD from the input
+        date: dateInput.value, // This is ISO YYYY-MM-DD from the input
         account: account,
-        desc: DOM.descInput.value.trim(),
+        desc: descInput.value.trim(),
         amount: amount.toFixed(2), // Store with 2 decimal places and sign
         sign: sign,
     };
@@ -497,8 +521,9 @@ const applyFilters = () => {
     let filtered = [...store.records];
 
     // Date Filter: filterFrom.value and filterTo.value are YYYY-MM-DD
-    const fromDateStr = DOM.filterFrom.value;
-    const toDateStr = DOM.filterTo.value; 
+    // CRITICAL FIX: Check if DOM elements exist
+    const fromDateStr = filterFrom ? filterFrom.value : '';
+    const toDateStr = filterTo ? filterTo.value : ''; 
     
     // CRITICAL FIX: Create filter date objects for the START (00:00:00) and END (23:59:59) of the selected day (Local Time)
     const fromDate = fromDateStr ? new Date(fromDateStr + 'T00:00:00') : null;
@@ -519,13 +544,15 @@ const applyFilters = () => {
     const dateFilteredList = [...filtered];
 
     // Account Filter
-    const selectedAccount = DOM.filterAccount.value;
+    // CRITICAL FIX: Check if DOM elements exist
+    const selectedAccount = filterAccount ? filterAccount.value : 'All Accounts';
     if (selectedAccount !== 'All Accounts') {
         filtered = filtered.filter(r => r.account === selectedAccount);
     }
 
     // Search Filter
-    const searchTerm = DOM.filterSearch.value.toLowerCase();
+    // CRITICAL FIX: Check if DOM elements exist
+    const searchTerm = filterSearch ? filterSearch.value.toLowerCase() : '';
     if (searchTerm) {
         filtered = filtered.filter(r => 
             r.desc.toLowerCase().includes(searchTerm) || 
@@ -562,8 +589,13 @@ const applyFilters = () => {
 };
 
 const applyQuickFilter = (type) => {
+    // CRITICAL FIX: Check if quickFilterButtons, filterFrom, filterTo exist
+    if (!quickFilterButtons.today || !filterFrom || !filterTo) return;
+    
     // Clear active class from all buttons
-    Object.values(DOM.quickFilterButtons).forEach(btn => btn.classList.remove('active'));
+    Object.values(quickFilterButtons).forEach(btn => {
+        if (btn) btn.classList.remove('active')
+    });
 
     const today = new Date();
     let from, to; // Declare `from` and `to` with `let`
@@ -571,27 +603,27 @@ const applyQuickFilter = (type) => {
     if (type === 'today') {
         from = isoFormat(today);
         to = isoFormat(today);
-        DOM.quickFilterButtons.today.classList.add('active');
+        quickFilterButtons.today.classList.add('active');
     } else if (type === 'yesterday') {
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
         from = isoFormat(yesterday);
         to = isoFormat(yesterday);
-        DOM.quickFilterButtons.yesterday.classList.add('active');
+        if (quickFilterButtons.yesterday) quickFilterButtons.yesterday.classList.add('active');
     } else if (type === 'month') {
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         from = isoFormat(startOfMonth);
         to = isoFormat(today); 
-        DOM.quickFilterButtons.month.classList.add('active');
+        if (quickFilterButtons.month) quickFilterButtons.month.classList.add('active');
     } else if (type === 'fiscal') {
         const dates = getFiscalYearDates(); // Returns { from: YYYY-MM-DD, to: YYYY-MM-DD }
         from = dates.from;
         to = dates.to;
-        DOM.quickFilterButtons.fiscal.classList.add('active');
+        if (quickFilterButtons.fiscal) quickFilterButtons.fiscal.classList.add('active');
     }
 
-    DOM.filterFrom.value = from;
-    DOM.filterTo.value = to;
+    filterFrom.value = from;
+    filterTo.value = to;
     applyFilters();
 };
 
@@ -642,7 +674,7 @@ const exportCSV = () => {
         // Double-quote escape for CSV
         const safeDesc = `"${r.desc.replace(/"/g, '""')}"`; 
         // FIX: Export absolute value in CSV (relying on 'Sign' field for clarity)
-        csv += `${formatDateDDMMYYYY(r.date)},${r.account},${safeDesc},${Math.abs(Number(r.amount)).toFixed(2)},${r.sign},${r.guid}\n`;
+        csv += `${formatDateDDMMYYYY(r.date)},${r.account},${safeDesc},${Math.abs(Number(r.amount)).toFixed(2)},${r.sign},${r.guid}\n`; // CRITICAL FIX: Ensure r.amount is treated as a Number
     });
 
     const filename = `homeledger_export_${isoToday().replace(/-/g, '')}.csv`;
@@ -728,55 +760,62 @@ const restoreData = (event) => {
 // -------------------------------------------------------------------
 
 const setupEventListeners = () => {
+    // CRITICAL FIX: Check if required DOM elements exist before adding listeners
+    if (!saveBtn || !cancelBtn || !deleteCancelBtn || !deleteConfirmBtn || !btnReset || !resetCancelBtn || !resetConfirmBtn || !btnLog || !logClose || !themeToggle || !btnBackup || !btnExport || !btnRestore || !btnRestoreSheet || !restoreFileInput || !filterSearch || !filterAccount || !filterFrom || !filterTo || !recordsHead) {
+        console.error("CRITICAL: One or more DOM elements failed to load. Event listeners cannot be attached.");
+        return; 
+    }
+    
     setupNetworkListeners();
 
     document.querySelectorAll('.big-btn').forEach(btn => {
         btn.addEventListener('click', (e) => openModal(e.target.dataset.action));
     });
-    DOM.saveBtn.addEventListener('click', saveRecord);
-    DOM.cancelBtn.addEventListener('click', closeModal);
-    DOM.deleteCancelBtn.addEventListener('click', closeModal);
+    saveBtn.addEventListener('click', saveRecord);
+    cancelBtn.addEventListener('click', closeModal);
+    deleteCancelBtn.addEventListener('click', closeModal);
     // Use target property to get the element that was actually clicked
-    DOM.deleteConfirmBtn.addEventListener('click', (e) => deleteRecord(e.target.dataset.id)); 
-    DOM.btnReset.addEventListener('click', () => DOM.resetOverlay.classList.add('show'));
-    DOM.resetCancelBtn.addEventListener('click', closeModal);
-    DOM.resetConfirmBtn.addEventListener('click', deleteAllData);
+    deleteConfirmBtn.addEventListener('click', (e) => deleteRecord(e.target.dataset.id)); 
+    btnReset.addEventListener('click', () => resetOverlay.classList.add('show'));
+    resetCancelBtn.addEventListener('click', closeModal);
+    resetConfirmBtn.addEventListener('click', deleteAllData);
 
-    DOM.btnLog.addEventListener('click', () => { 
+    btnLog.addEventListener('click', () => { 
         renderLogs();
-        DOM.logOverlay.classList.add('show');
+        logOverlay.classList.add('show');
     });
-    DOM.logClose.addEventListener('click', () => DOM.logOverlay.classList.remove('show'));
+    logClose.addEventListener('click', () => logOverlay.classList.remove('show'));
     
-    DOM.themeToggle.addEventListener('click', toggleTheme);
+    themeToggle.addEventListener('click', toggleTheme);
     
-    DOM.btnBackup.addEventListener('click', backupData);
-    DOM.btnExport.addEventListener('click', exportCSV);
-    DOM.btnRestore.addEventListener('click', () => DOM.restoreFileInput.click());
-    DOM.btnRestoreSheet.addEventListener('click', () => restoreDataFromSheets(false)); 
-    DOM.restoreFileInput.addEventListener('change', restoreData);
+    btnBackup.addEventListener('click', backupData);
+    btnExport.addEventListener('click', exportCSV);
+    btnRestore.addEventListener('click', () => restoreFileInput.click());
+    btnRestoreSheet.addEventListener('click', () => restoreDataFromSheets(false)); 
+    restoreFileInput.addEventListener('change', restoreData);
 
     // Filtering Events (using debounce for search input)
-    DOM.filterSearch.addEventListener('input', debounce(applyFilters, 300));
-    DOM.filterAccount.addEventListener('change', applyFilters);
-    DOM.filterFrom.addEventListener('change', applyFilters);
-    DOM.filterTo.addEventListener('change', applyFilters);
+    filterSearch.addEventListener('input', debounce(applyFilters, 300));
+    filterAccount.addEventListener('change', applyFilters);
+    filterFrom.addEventListener('change', applyFilters);
+    filterTo.addEventListener('change', applyFilters);
     
     // Quick Filter Events
-    DOM.quickFilterButtons.today.addEventListener('click', () => applyQuickFilter('today'));
-    DOM.quickFilterButtons.yesterday.addEventListener('click', () => applyQuickFilter('yesterday'));
-    DOM.quickFilterButtons.month.addEventListener('click', () => applyQuickFilter('month'));
-    DOM.quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
+    // Only attach if button is found
+    if (quickFilterButtons.today) quickFilterButtons.today.addEventListener('click', () => applyQuickFilter('today'));
+    if (quickFilterButtons.yesterday) quickFilterButtons.yesterday.addEventListener('click', () => applyQuickFilter('yesterday'));
+    if (quickFilterButtons.month) quickFilterButtons.month.addEventListener('click', () => applyQuickFilter('month'));
+    if (quickFilterButtons.fiscal) quickFilterButtons.fiscal.addEventListener('click', () => applyQuickFilter('fiscal'));
 
     // Sorting Events
-    DOM.recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
+    recordsHead.querySelectorAll('div[data-sort-key]').forEach(div => {
         div.addEventListener('click', (e) => handleSortClick(e.currentTarget.dataset.sortKey));
     });
     
     // Add event listener to close modals when pressing ESC
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") {
-            if (DOM.overlay.classList.contains('show') || DOM.deleteOverlay.classList.contains('show') || DOM.resetOverlay.classList.contains('show') || DOM.logOverlay.classList.contains('show')) {
+            if (overlay && overlay.classList.contains('show') || deleteOverlay && deleteOverlay.classList.contains('show') || resetOverlay && resetOverlay.classList.contains('show') || logOverlay && logOverlay.classList.contains('show')) {
                 closeModal();
             }
         }
@@ -787,8 +826,8 @@ const setupEventListeners = () => {
 // 9. Initialization (Final Call)
 // -------------------------------------------------------------------
 const init = async () => {
-    // CRITICAL FIX: Ensure DOM references are populated before any element interaction
-    setupDOMReferences();
+    // CRITICAL FIX: 1. Setup DOM References FIRST, before any interaction
+    setupDOMReferences(); 
     
     try {
         // FIX: Await loadFromStorage as it now performs async crypto operations
@@ -799,14 +838,16 @@ const init = async () => {
 
         // Default Filter 'Today' set kiya gaya hai:
         const todayISO = isoToday();
-        DOM.filterFrom.value = todayISO; 
-        DOM.filterTo.value = todayISO;   
-        DOM.quickFilterButtons.today.classList.add('active');
+        if (filterFrom) filterFrom.value = todayISO; // CRITICAL FIX: Check for existence
+        if (filterTo) filterTo.value = todayISO;   // CRITICAL FIX: Check for existence
+        if (quickFilterButtons.today) quickFilterButtons.today.classList.add('active');
         
         // Set initial sort indicator in the header
-        const initialHeader = DOM.recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
-        if (initialHeader) {
-            initialHeader.setAttribute('data-sort-order', currentSort.order);
+        if (recordsHead) { // CRITICAL FIX: Check for existence
+            const initialHeader = recordsHead.querySelector(`div[data-sort-key="${currentSort.key}"]`);
+            if (initialHeader) {
+                initialHeader.setAttribute('data-sort-order', currentSort.order);
+            }
         }
         
         // Calculate and render with initial data and filters
@@ -829,7 +870,7 @@ const init = async () => {
         // If loading fails, continue setup with empty/default state
         showToast("CRITICAL ERROR: Data initialization failed. App is running in empty/default state.", 'danger', 10000);
     } finally {
-        // CRITICAL FIX: Ensure event listeners are attached regardless of whether data loading succeeded or failed.
+        // CRITICAL FIX: 2. Ensure event listeners are attached regardless of whether data loading succeeded or failed.
         setupEventListeners(); 
         
         // PWA Service Worker Registration is non-critical and can run last.
