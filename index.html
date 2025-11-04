@@ -7,7 +7,7 @@
   
   <script>
     // This script runs synchronously to set the data-theme attribute on <html> before CSS loads
-    const THEME_KEY = 'homeledger_theme_v1';
+    var THEME_KEY = 'homeledger_theme_v1';
     const savedTheme = localStorage.getItem(THEME_KEY);
     if (savedTheme) {
         document.documentElement.setAttribute('data-theme', savedTheme);
