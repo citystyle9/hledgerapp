@@ -1,204 +1,152 @@
-// Optimization Summary: Converted to ES6 syntax and used const/let consistently. Improved async flow and simplified try...catch for clarity. loadFromStorage handles corrupted key by deleting it. Updated restoreDataFromSheets cleanup for better reliability.
 // -------------------------------------------------------------------
 // 1. Data Store and Constants
 // -------------------------------------------------------------------
-const STORAGE_KEY = 'homeledger_v1_data_v1_encrypted'; // Updated key for encrypted storage
-const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1_encrypted'; // Updated key for encrypted storage
+const STORAGE_KEY = 'homeledger_v1_data_v1';
+const PENDING_SYNC_KEY = 'homeledger_pending_sync_v1'; 
 // NOTE: GOOGLE_SHEETS_WEBHOOK is placed here as it is only used for data service operations
 const GOOGLE_SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzFsmbBc9RPcDUDL97TAhGXl5bSpkZO47_EMIUIznZ1PSRf4vvb0En9sRGP3pSz381X/exec';
 let store = { records: [], logs: [] };
 let pendingSyncQueue = [];
 
-// Global dependencies (must be available in app.js scope)
-/* global currentSort, SORT_KEY, showToast, addLog, nowTsForLog, calculateGlobalTotals, parseDDMMYYYYtoJSDate, isoFormat, ddMMYYYYToISO, encryptData, decryptData, KEY_STORAGE_KEY */
+// Global dependencies needed for persistence logic (must be declared in app.js scope)
+// Ensure these functions are accessible globally or passed in during initialization if required.
+// For modular simplicity, we rely on the functions existing in the global scope (i.e., imported before this file).
+/* global currentSort, showToast, addLog, saveToStorage, renderLogs, formatDate, isoFormat, calculateGlobalTotals */
 
 // -------------------------------------------------------------------
 // 2. Persistence & Logging
 // -------------------------------------------------------------------
-const saveToStorage = async () => {
-  try { 
-      // Encrypt main store and pending sync queue data
-      const encryptedStore = await encryptData(JSON.stringify(store));
-      const encryptedPending = await encryptData(JSON.stringify(pendingSyncQueue));
-
-      // 1. Store main data
-      if (encryptedStore) {
-            localStorage.setItem(STORAGE_KEY, encryptedStore);
+function saveToStorage(){
+  try{ 
+      if (store.records.length > 0 || store.logs.length > 0) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
       } else {
             localStorage.removeItem(STORAGE_KEY);
       }
       
-      // 2. Store pending queue
-      if (encryptedPending) {
-          localStorage.setItem(PENDING_SYNC_KEY, encryptedPending);
+      if (pendingSyncQueue.length > 0) {
+          localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(pendingSyncQueue));
       } else {
           localStorage.removeItem(PENDING_SYNC_KEY);
       }
       
-      // 3. Store non-sensitive data (sort state)
+      // NOTE: currentSort is part of the application state, but save logic is here
       localStorage.setItem(SORT_KEY, JSON.stringify(currentSort));
-
-  } catch (e) {
-      // Fail gracefully if quota is exceeded or other storage/crypto error
-      console.error('Error saving or encrypting to localStorage:', e);
-      showToast('Error saving data. Local storage quota exceeded or encryption failed.', 'danger', 5000);
-  }
-};
-
-const loadFromStorage = async () => {
-    try {
-        // Load main store
-        const rawStore = localStorage.getItem(STORAGE_KEY);
-        if (rawStore) { 
-            const decryptedStoreJson = await decryptData(rawStore);
-            if (decryptedStoreJson) {
-                const parsed = JSON.parse(decryptedStoreJson); 
-                // Defensive check for array type
-                store.records = Array.isArray(parsed.records) ? parsed.records : [];
-                store.logs = Array.isArray(parsed.logs) ? parsed.logs : [];
-            } else {
-                throw new Error("Decryption failed for main store.");
-            }
-        } else {
-             // Initialize to empty arrays if no store found
-             store.records = [];
-             store.logs = [];
-        }
-        
-        // Load pending sync queue
-        const rawPending = localStorage.getItem(PENDING_SYNC_KEY);
-        if (rawPending) {
-            const decryptedPendingJson = await decryptData(rawPending);
-            if (decryptedPendingJson) {
-                pendingSyncQueue = Array.isArray(JSON.parse(decryptedPendingJson)) ? JSON.parse(decryptedPendingJson) : [];
-            } else {
-                throw new Error("Decryption failed for sync queue.");
-            }
-        } else {
-            pendingSyncQueue = [];
-        }
-        
-        // Load sort state (not encrypted)
-        const rawSort = localStorage.getItem(SORT_KEY);
-        if (rawSort) {
-            currentSort = JSON.parse(rawSort) || { key: 'date', order: 'desc' };
-        } else {
-             currentSort = { key: 'date', order: 'desc' };
-        }
-
-    } catch (e) {
-        // CRITICAL FIX: If local storage is corrupted or decryption fails, reset to initial state
-        console.error('Error loading, parsing, or decrypting localStorage. Resetting data.', e);
-        store.records = [];
-        store.logs = [`[${nowTsForLog()}] WARNING: Data corrupted/decryption failed. Local storage reset.`];
-        pendingSyncQueue = [];
-        currentSort = { key: 'date', order: 'desc' };
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(PENDING_SYNC_KEY);
-        localStorage.removeItem(SORT_KEY);
-        // Clear encryption key to force regeneration if it was the source of corruption
-        localStorage.removeItem(KEY_STORAGE_KEY); 
-        showToast('Local data corrupted or decryption failed. Data has been reset.', 'danger', 7000);
-        
-        // CRITICAL FIX: Re-throw to ensure init() knows loading failed (though it should handle cleanup in finally)
-        throw e;
+  }catch(e){}
+}
+function loadFromStorage(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ 
+        const parsed = JSON.parse(raw); 
+        store.records = Array.isArray(parsed.records) ? parsed.records : [];
+        store.logs = Array.isArray(parsed.logs) ? parsed.logs : [];
     }
-};
+    
+    const rawPending = localStorage.getItem(PENDING_SYNC_KEY);
+    if(rawPending) {
+        pendingSyncQueue = Array.isArray(JSON.parse(rawPending)) ? JSON.parse(rawPending) : [];
+    }
+    
+    const rawSort = localStorage.getItem(SORT_KEY);
+    if(rawSort) currentSort = JSON.parse(rawSort) ||
+    { key: 'date', order: 'desc' };
+
+  }catch(e){
+    store.records = [];
+    store.logs = [];
+    pendingSyncQueue = [];
+    currentSort = { key: 'date', order: 'desc' };
+  }
+}
 
 // -------------------------------------------------------------------
 // 3. Google Sheets Sync Logic
 // -------------------------------------------------------------------
 
-const addToPendingQueue = (record, recordStatus) => {
-    // NOTE: This logic should ensure we use DD-MM-YYYY format for `record.date`
+function addToPendingQueue(record, recordStatus) {
     const existingIndex = pendingSyncQueue.findIndex(item => item.id === record.guid);
-    
-    // FIX: Amount value already carries the correct sign from app.js (negative for expense)
-    const amountValue = Number(record.amount);
-
     const sheetData = {
         id: record.guid,
-        date: record.date, // DD-MM-YYYY string from app.js
+        date: record.date, // Date is already in DD-MM-YYYY format here
         description: record.desc,
-        amount: amountValue, 
-        account: record.account || 'N/A',
+        amount: record.sign === 'expense' ?
+        -Number(record.amount) : Number(record.amount), 
+        account: record.account ||
+        'N/A',
         status: recordStatus
     };
-    
     if (existingIndex > -1) {
-        // Update existing item
         pendingSyncQueue[existingIndex] = sheetData;
     } else {
-        // Add new item
         pendingSyncQueue.push(sheetData);
     }
-    saveToStorage(); // NOTE: saveToStorage is now async
+    saveToStorage();
     addLog(`[${nowTsForLog()}] 💾 Pending Sync: ${recordStatus} request for ${record.desc}. Added to queue.`);
-};
+}
 
 // Improvement: Default status changed to 'CREATED'
-const sendRecordToSheets = async (record, recordStatus = 'CREATED') => { 
-    if (!record || Number(record.amount) === 0) return;
+async function sendRecordToSheets(record, recordStatus = 'CREATED') { 
+    if (!record || record.amount === 0) return;
     
-    // Check if offline and queue immediately 
+    // Check if offline and queue immediately (2)
     if (!navigator.onLine) {
         addToPendingQueue(record, recordStatus);
         return;
     }
     
-    // FIX: Amount value already carries the correct sign from app.js (negative for expense)
-    const amountValue = Number(record.amount);
-
     const sheetData = {
         id: record.guid,
-        date: record.date, // DD-MM-YYYY string from app.js
+        date: record.date, // Date is already in DD-MM-YYYY format here
         description: record.desc,
-        amount: amountValue, 
-        account: record.account || 'N/A',
+        amount: record.sign === 'expense' ?
+        -Number(record.amount) : Number(record.amount), 
+        account: record.account ||
+        'N/A',
         status: recordStatus
     };
-    
-    const attemptFetch = async (data) => {
+    async function attemptFetch(data) {
         try {
-            // FIX: Use 'no-cors' mode for reliability with Apps Script webhook POST
-            const response = await fetch(GOOGLE_SHEETS_WEBHOOK, {
+            // FIX: Use 'no-cors' mode for reliability with Apps Script webhook
+            await fetch(GOOGLE_SHEETS_WEBHOOK, {
                 method: 'POST',
                 mode: 'no-cors', 
-                // Content-Type is irrelevant in no-cors mode, but kept for clarity
-                headers: { 'Content-Type': 'text/plain' }, 
+                headers: {
+                    'Content-Type': 'text/plain', 
+                },
                 body: JSON.stringify(data)
             });
-            // In no-cors mode, response.ok is always true, so we assume success.
+            // Assume success in no-cors mode, rely on Apps Script logs for errors
             return true; 
         } catch (error) {
             // This catch block only hits on network failure (offline/DNS/etc.)
             console.error('Sheet Sync Failed (Network/Server Error):', error);
             return false;
         }
-    };
+    }
 
     const success = await attemptFetch(sheetData);
     if (success) {
-        // console.log('Sheets Sync: Request sent successfully.');
+        console.log('Sheets Sync: Request sent successfully.');
         const index = pendingSyncQueue.findIndex(item => item.id === record.guid);
-        if (index > -1) {
+        if(index > -1) {
              pendingSyncQueue.splice(index, 1);
-             await saveToStorage(); // NOTE: saveToStorage is now async
+             saveToStorage();
              addLog(`[${nowTsForLog()}] ✅ Sync Success: ${recordStatus} request for ${record.desc} completed and removed from queue.`);
         }
     } else {
         // Add to Queue only if fetch failed (network/server error)
         addToPendingQueue(record, recordStatus);
     }
-};
+}
 
-const attemptPendingSync = async () => {
+async function attemptPendingSync() {
     if (pendingSyncQueue.length === 0) {
-        // console.log('No pending records to sync.');
+        console.log('No pending records to sync.');
         return;
     }
     
-    // Check if offline before starting sync 
+    // Check if offline before starting sync (2)
     if (!navigator.onLine) {
          showToast('Offline mode. Sync attempt skipped.', 'offline', 3000);
          return;
@@ -207,7 +155,7 @@ const attemptPendingSync = async () => {
     showToast('Connected! Syncing pending entries...', 'online', 5000);
 
     addLog(`[${nowTsForLog()}] 🔄 Starting automatic sync for ${pendingSyncQueue.length} pending records...`);
-    // Create a copy to iterate, in case the original array changes during sync
+    // We create a copy to iterate, in case the original array changes during sync
     const recordsToSync = [...pendingSyncQueue];
     let syncCount = 0;
 
@@ -231,25 +179,22 @@ const attemptPendingSync = async () => {
         } catch (error) {
             // This catch block only hits on network failure, stopping the loop
             console.error('Auto Sync Interrupted (Network/Server Error):', error);
-            addLog(`[${nowTsForLog()}] ⚠️ Auto Sync Interrupted. Network connection lost or server error. Remaining: ${pendingSyncQueue.length} in queue.`);
-            // Break the loop as the network is likely down
+            addLog(`[${nowTsForLog()}] ⚠️ Auto Sync Interrupted. Network connection lost or server error.`);
             break;
         }
     }
     
-    await saveToStorage(); // NOTE: saveToStorage is now async
+    saveToStorage();
     
     if (syncCount > 0) {
-        showToast(`Sync completed: ${syncCount} records sent.`, 'online', 4000);
         addLog(`[${nowTsForLog()}] ✅ Automatic sync completed: ${syncCount} records successfully synced.`);
     } else if (pendingSyncQueue.length > 0) {
-         showToast(`Sync failed. ${pendingSyncQueue.length} records remain queued.`, 'danger', 5000);
          addLog(`[${nowTsForLog()}] ⚠️ Sync failed. ${pendingSyncQueue.length} records still in queue.`);
     }
-};
+}
 
-const restoreDataFromSheets = (isAutoLoad) => {
-    // Confirm only on manual trigger
+// JSONP restoreDataFromSheets() function relies on data-service.js
+function restoreDataFromSheets(isAutoLoad) {
     if (!isAutoLoad && !confirm("Are you sure you want to pull ALL active records from Google Sheet and replace your current Local Data? (This action cannot be undone locally)")) {
       return;
     }
@@ -257,100 +202,73 @@ const restoreDataFromSheets = (isAutoLoad) => {
     addLog(`[${nowTsForLog()}] Attempting to restore data from Google Sheet (JSONP)...`);
 
     const baseUrl = GOOGLE_SHEETS_WEBHOOK + '?action=getall';
-    // Use a more unique callback name to prevent collisions
     const callbackName = 'homeledger_restore_cb_' + Date.now();
     const url = baseUrl + '&callback=' + callbackName;
-    
     // Create a timeout in case script fails to load
     const timeoutMs = 15000;
+    // 15 seconds
     let timedOut = false;
-    
-    const cleanup = () => {
+    const to = setTimeout(() => {
+      timedOut = true;
+      window[callbackName] = function(){};
+      addLog(`[${nowTsForLog()}] ERROR: Sheet Restore JSONP timed out.`);
+      alert('Failed to restore: request timed out.');
+      cleanup();
+    }, timeoutMs);
+    // Cleanup function
+    function cleanup() {
       clearTimeout(to);
       // remove script tag
       const s = document.getElementById(callbackName + '_script');
       if (s && s.parentNode) s.parentNode.removeChild(s);
       // remove global callback
-      try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined; }
-    };
+      try { delete window[callbackName]; } catch(e) { window[callbackName] = undefined;
+      }
+    }
 
-    const to = setTimeout(() => {
-      timedOut = true;
-      // Prevent callback from running if it suddenly loads
-      // FIX: Check if function exists before overwriting, to not throw an error if the callback already ran
-      if (typeof window[callbackName] === 'function') {
-          window[callbackName] = () => {}; 
-      }
-      addLog(`[${nowTsForLog()}] ERROR: Sheet Restore JSONP timed out.`);
-      if (!isAutoLoad) {
-          showToast('Failed to restore: request timed out.', 'danger', 5000);
-      }
-      cleanup();
-    }, timeoutMs);
-    
     // Define the global callback (yehi function data receive karega)
-    window[callbackName] = async (response) => { // Made async to allow saveToStorage
+    window[callbackName] = function(response) {
       if (timedOut) return;
       cleanup();
 
       try {
         if (response && Array.isArray(response.records)) {
           
+          // IMPORTANT FIX: Convert Date Object back to YYYY-MM-DD string for display/filtering
           store.records = response.records.map(r => {
-              // Safety check for required properties
               if (!r || typeof r.date !== 'string' || typeof r.account !== 'string' || typeof r.desc !== 'string' || isNaN(Number(r.amount))) {
-                  // Skip invalid/corrupted record
-                  return null;
+              
+              return null;
               }
-              
-              let amountValue = Number(r.amount);
-              
-              // FIX: Ensure restored amount has correct sign and stores as string
-              if (r.account === 'Expense' && amountValue > 0) {
-                   amountValue = -amountValue;
-              } else if ((r.account === 'Income' || r.account === 'Loan') && amountValue < 0) {
-                   amountValue = Math.abs(amountValue);
-              }
-              
-              r.amount = amountValue.toFixed(2); // Ensure amount is string with 2 decimals and correct sign
-              r.sign = (r.account === 'Expense') ? 'expense' : 'positive';
-              
-              // CRITICAL FIX: The Apps Script returns DD-MM-YYYY strings for 'date'.
-              // Filter based on normalized status
+              // Agar date ek Date Object ban chuki hai, toh usko wapas YYYY-MM-DD string mein convert karen
+              if (r.date instanceof Date) {
+                   r.date = isoFormat(r.date); 
+        
+              } 
+              // Improvement: Use new status keywords in filtering
               return (r.status_normalized === 'CREATED' || r.status_normalized === 'UPDATED') ? r : null; 
-          }).filter(r => r !== null); // Remove null entries (DELETED/invalid records)
+          }).filter(r => r !== null);
+          // Remove null entries (deleted/edited)
           
-          pendingSyncQueue = []; // Clear queue on full restore
-          
+          pendingSyncQueue = [];
+          // Clear queue on full restore
           store.logs.unshift(`[${nowTsForLog()}] Data successfully restored from Google Sheet: ${store.records.length} records loaded.`);
-          
           // Call app.js function to recalculate and render
           calculateGlobalTotals(); 
-          
-          // After loading new data, save to storage (which will trigger encryption)
-          await saveToStorage();
-          
-          if (!isAutoLoad) { // Only show toast on manual restore
-              showToast(`Successfully restored ${store.records.length} active records from Sheet.`, 'online', 5000);
+          if (!isAutoLoad) { // Only show alert on manual restore
+              alert(`Successfully restored ${store.records.length} active records from Google Sheet.`);
           }
           addLog(`[${nowTsForLog()}] Sheet Restore completed successfully.`);
-          
         } else if (response && response.error) {
           addLog(`[${nowTsForLog()}] ERROR: Sheet Restore returned error: ${response.error}`);
-          if (!isAutoLoad) {
-             showToast('Restore failed: ' + response.error, 'danger', 7000);
-          }
+          alert('Restore failed: ' + response.error);
         } else {
-          addLog(`[${nowTsForLog()}] ERROR: Sheet Restore returned invalid format or no records.`);
-          if (!isAutoLoad) {
-             showToast('Failed to restore data: invalid response format.', 'danger', 7000);
-          }
+          addLog(`[${nowTsForLog()}] ERROR: Sheet Restore returned invalid format.`);
+          alert('Failed to restore data: invalid response format.');
         }
       } catch (err) {
         addLog(`[${nowTsForLog()}] ERROR: Processing restore response failed: ${err.message}`);
-        if (!isAutoLoad) {
-            showToast('Error processing restore data: ' + err.message, 'danger', 7000);
-        }
+        alert('Error processing restore data: ' + err.message);
       }
     };
 
@@ -359,14 +277,12 @@ const restoreDataFromSheets = (isAutoLoad) => {
     script.id = callbackName + '_script';
     script.src = url;
     script.async = true;
-    script.onerror = () => {
+    script.onerror = function() {
       if (timedOut) return;
       cleanup();
       addLog(`[${nowTsForLog()}] ERROR: Sheet Restore JSONP script load failed.`);
-      if (!isAutoLoad) {
-        showToast('Failed to restore data from Google Sheet (script load error).', 'danger', 7000);
-      }
+      alert('Failed to restore data from Google Sheet (script load error).');
     };
 
     document.head.appendChild(script);
-};
+}
