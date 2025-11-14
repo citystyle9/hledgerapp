@@ -188,7 +188,7 @@ function renderRecordsList(list){
         else amountColor = `color:var(--success);font-weight:700`;
 
         // Improvement: Format date for display (DD-MM-YYYY)
-        const displayDate = formatDateDDMMYYYY(rec.date); 
+        const displayDate = rec.date; // FIX: Date is already DD-MM-YYYY
         
         // Fix XSS: Build elements safely using textContent (1)
         
@@ -302,7 +302,7 @@ function openDeleteConfirm(guid) {
     const escapedDesc = record.desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     
     deleteDetailsDiv.innerHTML = `
-        <strong>Date:</strong> ${formatDateDDMMYYYY(record.date)}<br>
+        <strong>Date:</strong> ${record.date}<br>
         <strong>Account:</strong> ${record.account}<br>
         <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
         <strong>Description:</strong> ${escapedDesc}
@@ -562,7 +562,7 @@ function exportCSV() {
     let csv = "Date,Account,Description,Amount,Sign,GUID\n";
     store.records.forEach(r => {
         const safeDesc = r.desc.replace(/"/g, '""'); 
-        csv += `${formatDateDDMMYYYY(r.date)},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
+        csv += `${r.date},${r.account},"${safeDesc}",${r.amount},${r.sign},${r.guid}\n`;
     });
 
     const filename = `homeledger_export_${new Date().toISOString().slice(0,10)}.csv`;
