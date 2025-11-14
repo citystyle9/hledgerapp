@@ -206,7 +206,8 @@ function renderRecordsList(list){
 
         const amountDiv = document.createElement('div');
         amountDiv.style.cssText = amountColor;
-        amountDiv.textContent = formatAmount(rec.amount,rec.sign);
+        // FIX 1: Use Math.abs on the amount to prevent showing negative sign in UI
+        amountDiv.textContent = formatAmount(Math.abs(Number(rec.amount)),rec.sign);
         row.appendChild(amountDiv);
 
         const actionsDiv = document.createElement('div');
@@ -280,14 +281,24 @@ function openEdit(guid) {
 
     editingId = guid;
     title.textContent = `Edit ${record.account}`;
-    dateInput.value = record.date; // Date is YYYY-MM-DD
+    
+    // FIX 3: Convert date from DD-MM-YYYY (storage) to YYYY-MM-DD (input requirement)
+    const parts = record.date.split('-'); // [DD, MM, YYYY]
+    const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+    dateInput.value = isoDate;
+    
     accountSelect.value = record.account;
     descInput.value = record.desc;
-    amtInput.value = record.amount;
     
-    accountSelect.disabled = false;
+    // FIX 1 (Consistency): Use Math.abs for amount in edit form
+    amtInput.value = Math.abs(Number(record.amount));
+    
+    // FIX 2: Disable Date and Account fields during edit
+    accountSelect.disabled = true; 
+    dateInput.disabled = true; 
+    
     saveBtn.className = 'btn-save ' + record.account.toLowerCase();
-    saveBtn.textContent = 'Update'; // Improvement: Change button text
+    saveBtn.textContent = 'Update';
     
     overlay.classList.add('show');
     descInput.focus();
@@ -304,7 +315,7 @@ function openDeleteConfirm(guid) {
     deleteDetailsDiv.innerHTML = `
         <strong>Date:</strong> ${record.date}<br>
         <strong>Account:</strong> ${record.account}<br>
-        <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(record.amount, record.sign)}</span><br>
+        <strong>Amount:</strong> <span style="font-weight:700; color: ${record.sign === 'expense' ? 'var(--danger)' : 'var(--success)'};">${formatAmount(Math.abs(Number(record.amount)), record.sign)}</span><br>
         <strong>Description:</strong> ${escapedDesc}
     `;
     deleteOverlay.classList.add('show');
@@ -315,6 +326,11 @@ function closeModal() {
     deleteOverlay.classList.remove('show');
     resetOverlay.classList.remove('show');
     editingId = null;
+    
+    // FIX 2b: Ensure inputs are re-enabled when modal closes
+    dateInput.disabled = false;
+    accountSelect.disabled = false; 
+    
     document.querySelector('details.menu').open = false; 
 }
 
