@@ -32,7 +32,7 @@ const btnRestoreSheet = document.getElementById('btn-restore-sheet');
 const btnExport = document.getElementById('btn-export');
 const themeToggle = document.getElementById('theme-toggle'); 
 const restoreFileInput = document.getElementById('restore-file');
-const toastContainer = document.getElementById('toast-container'); 
+// const toastContainer = document.getElementById('toast-container'); // REMOVED - New function handles this
 
 const quickFilterButtons = {
     today: document.getElementById('quick-today'),
@@ -60,18 +60,19 @@ function debounce(fn, delay) {
 // 2. Toast and Networking Logic
 // -------------------------------------------------------------------
 
-function showToast(message, type = 'info', duration = 3000) {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    toastContainer.appendChild(toast);
-    
-    setTimeout(() => toast.classList.add('show'), 10);
+// NEW MODERN TOAST FUNCTION
+function showToast(message, type = "info") {
+    const toast = document.createElement("div");
+    toast.classList.add("toast");
+    toast.classList.add(type); 
+    toast.innerText = message;
 
+    document.getElementById("toastBox").appendChild(toast);
+
+    // Auto remove after animation
     setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
+        toast.remove();
+    }, 3000); // 3000ms = 3s
 }
 
 function setupNetworkListeners() {
@@ -86,7 +87,8 @@ function setupNetworkListeners() {
     window.addEventListener('offline', () => {
         console.log("coded: app.js");
         console.log('Internet connection lost — operating in offline mode.');
-        showToast('Offline mode — entries will be queued.', 'offline', 6000);
+        // UPDATED to use new toast
+        showToast('Offline mode — entries will be queued.', 'error');
     });
 }
 
@@ -336,12 +338,14 @@ function closeModal() {
 
 function saveRecord() {
     if (!dateInput.value || !descInput.value || !amtInput.value) {
-        alert('Please fill in all fields (Date, Description, Amount).');
+        // UPDATED to use new toast
+        showToast('Please fill in all fields.', 'error');
         return;
     }
     const amount = Number(amtInput.value);
     if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid amount.');
+        // UPDATED to use new toast
+        showToast('Please enter a valid amount.', 'error');
         return;
     }
     const account = accountSelect.value;
@@ -571,7 +575,8 @@ function backupData() {
 
 function exportCSV() {
     if (store.records.length === 0) {
-        alert('No records to export.');
+        // UPDATED to use new toast
+        showToast('No records to export.', 'info');
         return;
     }
     // Improvement: Use DD-MM-YYYY format in CSV
@@ -612,12 +617,15 @@ function restoreData(event) {
 
                 store.logs.unshift(`[${nowTsForLog()}] Data restored from local file: ${file.name}`);
                 calculateGlobalTotals();
-                alert(`Successfully restored ${data.records.length} records from local file.`);
+                // UPDATED to use new toast
+                showToast(`Successfully restored ${data.records.length} records.`, 'success');
             } else {
-                alert('Error: Invalid backup file format. "records" array not found.');
+                // UPDATED to use new toast
+                showToast('Error: Invalid backup file format.', 'error');
             }
         } catch (err) {
-            alert('Error reading or parsing the file: ' + err.message);
+            // UPDATED to use new toast
+            showToast('Error reading or parsing the file.', 'error');
         }
         event.target.value = null; 
     };
@@ -706,7 +714,8 @@ function init(){
     
     // NEW: Initial offline check on load
     if (!navigator.onLine) {
-        showToast('App loaded in Offline mode.', 'offline', 6000);
+        // UPDATED to use new toast
+        showToast('App loaded in Offline mode.', 'error');
     }
 
     setupEventListeners(); // CRITICAL FIX: Event listeners are now attached!
